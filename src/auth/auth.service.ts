@@ -1,37 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/db/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '@/config/prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private jwtService: JwtService,
-    private readonly prisma: PrismaService
+    private prisma: PrismaService,
+    private jwtService: JwtService
   ) {}
 
   async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
+    const employee = await this.prisma.employee.findUnique({
       where: { email },
     });
-
-    if (user && (await this.comparePasswords(password, user.password))) {
-      const { password, ...result } = user;
-      return result;
+    if (!employee || !(await bcrypt.compare(password, employee.password))) {
+      throw new UnauthorizedException('Email or password is incorrect');
     }
-    return null;
+    return employee;
   }
 
-  private async comparePasswords(
-    password: string,
-    hashedPasswords: string
-  ): Promise<boolean> {
-    return bcrypt.compare(password, hashedPasswords);
-  }
-
-  async login(user: any): Promise<any> {
-    const payload = { email: user.email, name: user.name, userId: user.id };
-    console.log(payload);
-    return this.jwtService.sign(payload);
+  async login(user: any) {
+    const payload = { sub: user.id, email: user.email };
+    return {
+      status_code: 200,
+      success: true,
+      message: 'Login successful',
+      data: {
+        access_token: this.jwtService.sign(payload),
+      },
+    };
   }
 }
