@@ -1,16 +1,18 @@
-import { Body, Controller, HttpException, Post } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dtos/login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
-    const user = await this.authService.validateUser(body.email, body.password);
-    if (!user) {
-      throw new HttpException('Credenciais Inválidas', 401);
-    }
+  @HttpCode(200)
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.password
+    );
     return this.authService.login(user);
   }
 }
