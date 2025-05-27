@@ -1,8 +1,0 @@
-##
-POST http://localhost:3001/auth/login
-content-type: application/json
-
-{
-    "email":"admin@admin.com",
-    "password": "Admin123"
-}

@@ -8,26 +8,72 @@ datasource db {
 }
 
 model Employee {
-  id             String   @id @default(uuid())
-  name           String   @db.VarChar(30)
-  surname        String   @db.VarChar(60)
-  birth_date     DateTime
-  role           String   @db.VarChar(20)
-  cpf            String   @db.VarChar(11) @unique
-  email          String   @db.VarChar(60) @unique
-  phone          String   @db.VarChar(15)
-  password       String   @db.VarChar(128)
-  cep            String   @db.VarChar(9)
-  street         String   @db.VarChar(100)
-  neighborhood   String   @db.VarChar(60)
-  number         String   @db.VarChar(20)
-  city           String   @db.VarChar(30)
-  uf             String   @db.VarChar(2)
-  state          String   @db.VarChar(20)
-  complement     String?  @db.VarChar(30)
-  active         Boolean  @default(true)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(30)
+  surname      String   @db.VarChar(60)
+  birth_date   DateTime
+  role         String   @db.VarChar(20)
+  cpf          String   @unique @db.VarChar(11)
+  email        String   @unique @db.VarChar(60)
+  phone        String   @db.VarChar(15)
+  password     String   @db.VarChar(128)
+
+  cep          String   @db.VarChar(9)
+  street       String   @db.VarChar(100)
+  neighborhood String   @db.VarChar(60)
+  number       String   @db.VarChar(20)
+  city         String   @db.VarChar(30)
+  uf           String   @db.VarChar(2)
+  state        String   @db.VarChar(20)
+  complement   String?  @db.VarChar(30)
+
+  active       Boolean  @default(true)
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  logs LogEmployeeEvent[]
 
   @@map("employees")
+}
+
+model Event {
+  id                   String   @id @default(uuid())
+  name                 String   @db.VarChar(100)
+  description          String?  @db.VarChar(1000)
+  date                 DateTime
+  greeting_description String?  @db.VarChar(1000)
+  attendance           Int?
+  embedded_instagram   String?  @db.VarChar(1000)
+  status               String   @db.VarChar(20)
+
+  street               String   @db.VarChar(100)
+  neighborhood         String   @db.VarChar(30)
+  number               String   @db.VarChar(20)
+  city                 String   @db.VarChar(30)
+  uf                   String   @db.VarChar(2)
+  state                String   @db.VarChar(20)
+  cep                  String   @db.VarChar(9)
+  complement           String?  @db.VarChar(30)
+
+  active               Boolean  @default(true)
+
+  updated_at           DateTime @updatedAt
+  created_at           DateTime @default(now())
+  logs LogEmployeeEvent[]
+
+  @@map("events")
+}
+
+model LogEmployeeEvent {
+  id          String   @id @default(uuid())
+  id_employee String   @db.VarChar(25)
+  id_event    String   @db.VarChar(25)
+  log_message String   @db.VarChar(100)
+  created_at  DateTime @default(now())
+
+  // Relações
+  employee Employee @relation(fields: [id_employee], references: [id], onDelete: Cascade)
+  event    Event    @relation(fields: [id_event], references: [id], onDelete: Cascade)
+
+  @@map("log_employee_event")
 }
