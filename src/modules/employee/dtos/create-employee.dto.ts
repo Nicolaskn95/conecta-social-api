@@ -7,7 +7,10 @@ import {
   IsOptional,
   Length,
   IsBoolean,
+  IsEnum,
 } from 'class-validator';
+import { EmployeeRole } from '../enums/role.enum';
+import { ErrorMessages } from '@/common/helper/error-messages';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -21,9 +24,11 @@ export class CreateEmployeeDto {
   @IsDateString()
   birth_date: string;
 
-  @IsString()
+  @IsEnum(EmployeeRole, {
+    message: ErrorMessages.ROLE_INVALID,
+  })
   @IsNotEmpty()
-  role: string;
+  role: EmployeeRole;
 
   @IsString()
   @Length(11, 11)
@@ -70,6 +75,7 @@ export class CreateEmployeeDto {
   @IsString()
   complement?: string;
 
+  @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => (value === undefined ? true : value))
   active?: boolean;
