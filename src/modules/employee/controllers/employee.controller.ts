@@ -30,6 +30,12 @@ export class EmployeeController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('actives')
+  findAllActives() {
+    return this.employeeService.findAllActives();
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.employeeService.findOne(id);

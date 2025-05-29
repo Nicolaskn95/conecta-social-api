@@ -12,7 +12,6 @@ import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { ResponseHelper } from '@/common/helper/response.helper';
 
 @Controller('events')
 export class EventController {
@@ -27,8 +26,13 @@ export class EventController {
   @UseGuards(JwtAuthGuard)
   @Get()
   async findAll() {
-    const result = await this.eventService.findAll();
-    return ResponseHelper.success(result, 'Eventos listados com sucesso', 200);
+    return this.eventService.findAll();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('actives')
+  findAllActives() {
+    return this.eventService.findAllActives();
   }
 
   @UseGuards(JwtAuthGuard)
