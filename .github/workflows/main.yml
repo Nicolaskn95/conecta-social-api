@@ -1,41 +1,53 @@
+name: Deploy to Staging
+
 on:
   push:
     branches:
-    - main
-    
+      - main
+
 jobs:
-  my_job:
-    name: deploy to staging
+  deploy:
+    name: Deploy to staging
     runs-on: ubuntu-22.04
+
     steps:
       - name: Testar secrets
         run: echo "Secrets configuradas corretamente!"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          EMAIL_ORIGEM: ${{ secrets.EMAIL_ORIGEM }}
-          EMAIL_DESTINO: ${{ secrets.EMAIL_DESTINO }}
-          SENHA_EMAIL: ${{ secrets.SENHA_EMAIL }}
+      - name: Validar GH_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          RESPONSE=$(curl -s -H "Authorization: token $GH_TOKEN" https://api.github.com/user)
+          if echo "$RESPONSE" | grep -q "login"; then
+            echo "✅ GH_TOKEN válido!"
+          else
+            echo "❌ GH_TOKEN inválido ou sem permissão!"
+            exit 1
+          fi
 
-      - name: Checar repositório
+      - name: Checkout do repositório
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
-        
-      - uses: actions/setup-node@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
           node-version: 20.x
 
-      - name: Install dependencies
+      - name: Install semver CLI
+        run: npm install -g semver
+
+      - name: Instalar dependências
         run: yarn
- 
-      - name: Build application
+
+      - name: Build da aplicação
         run: yarn build
-        
+
       - name: Criar nova tag caso não exista
-        id: create_initial_tag
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
@@ -45,39 +57,32 @@ jobs:
             git tag -a v0.0.0 -m "Initial release"
             git push origin v0.0.0
           fi
-          
+
       - name: Calcular nova versão
         id: version
         run: |
           git fetch --tags
-          
-          # Pega a última tag válida em formato semver (X.Y.Z)
           LAST_TAG=$(git tag --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
-          
-          # Se não houver tags, define v0.0.0
           if [ -z "$LAST_TAG" ]; then
             LAST_TAG="v0.0.0"
           fi
           echo "Versão Atual: $LAST_TAG"
-          
-          # Remove o prefixo 'v' caso exista
+
           CURRENT_VERSION=${LAST_TAG#v}
-          
-          # Inicializa flags de incremento
+
           MAJOR=0
           MINOR=0
           PATCH=0
-          
-          # Obtém commits desde a última versão válida
+
           if [ "$LAST_TAG" = "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"%s")
           else
             COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s")
           fi
+
           echo "Commits desde a última tag:"
           echo "$COMMITS"
-          
-          # Verifica mensagens de commit
+
           while read -r COMMIT; do
             if [[ "$COMMIT" == *"BREAKING CHANGE"* ]]; then
               MAJOR=1
@@ -87,8 +92,7 @@ jobs:
               PATCH=1
             fi
           done <<< "$COMMITS"
-          
-          # Calcula nova versão
+
           if [[ $MAJOR -eq 1 ]]; then
             NEW_VERSION=$(semver -i major $CURRENT_VERSION)
           elif [[ $MINOR -eq 1 ]]; then
@@ -98,65 +102,37 @@ jobs:
           else
             NEW_VERSION=$CURRENT_VERSION
           fi
-          
+
           echo "Nova versão: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
-          
+
       - name: Atualizar versão no package.json
         run: |
           CURRENT_PKG_VERSION=$(node -p "require('./package.json').version")
-          
-          if [ "$CURRENT_PKG_VERSION" != "${{ env.new_version }}" ]; then
-            npm version ${{ env.new_version }} --no-git-tag-version
-            echo "Versão atualizada para ${{ env.new_version }}"
+          if [ "$CURRENT_PKG_VERSION" != "$new_version" ]; then
+            npm version "$new_version" --no-git-tag-version
+            echo "Versão atualizada para $new_version"
           else
-            echo "A versão já é ${{ env.new_version }}, nenhuma alteração necessária."
+            echo "A versão já é $new_version, nenhuma alteração necessária."
           fi
-          
+
       - name: Commit e push
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
-          
-          if git diff --exit-code; then
-            echo "Nenhuma mudança para commit"
-          else
+
+          if [ -n "$(git status --porcelain)" ]; then
             git add package.json
-            git commit -m "chore(release): version ${{ env.new_version }}"
-            if git rev-parse "v${{ env.new_version }}" >/dev/null 2>&1; then
-              echo "Tag v${{ env.new_version }} já existe, ignorando..."
+            git commit -m "chore(release): version $new_version"
+            if git rev-parse "v$new_version" >/dev/null 2>&1; then
+              echo "Tag v$new_version já existe, ignorando..."
             else
-              git tag "v${{ env.new_version }}"
-              git push origin "v${{ env.new_version }}"
+              git tag "v$new_version"
+              git push origin "v$new_version"
             fi
             git push origin main --follow-tags
+          else
+            echo "Nenhuma mudança para commit"
           fi
-          
-      - name: Enviar e-mail falha
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_ORIGEM }}
-          password: ${{ secrets.SENHA_EMAIL }}
-          subject: Falha no workflow do GitHub Actions
-          body: O workflow falhou no passo de testes.
-          to: ${{ secrets.EMAIL_DESTINO }}
-          from: ${{ secrets.EMAIL_ORIGEM }}
-
-      - name: Enviar e-mail sucesso
-        if: success()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_ORIGEM }}
-          password: ${{ secrets.SENHA_EMAIL }}
-          subject: Sucesso no workflow do GitHub Actions
-          body: O workflow foi executado com sucesso! 🎉
-          to: ${{ secrets.EMAIL_DESTINO }}
-          from: ${{ secrets.EMAIL_ORIGEM }}
-        
