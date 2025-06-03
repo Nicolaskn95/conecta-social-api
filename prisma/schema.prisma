@@ -50,7 +50,7 @@ model Event {
   date                 DateTime
   greeting_description String?  @db.VarChar(1000)
   attendance           Int?
-  embedded_instagram   String?  @db.VarChar(1000)
+  embedded_instagram   String?  @db.Text
   status               String   @db.VarChar(20)
 
   street               String   @db.VarChar(100)
