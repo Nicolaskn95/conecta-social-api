@@ -78,8 +78,8 @@ model LogEmployeeEvent {
   log_message String   @db.VarChar(100)
   created_at  DateTime @default(now())
 
-  employee Employee @relation(fields: [id_employee], references: [id], onDelete: Cascade)
-  event    Event    @relation(fields: [id_event], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [id_employee], references: [id])
+  event    Event    @relation(fields: [id_event], references: [id])
 
   @@map("log_employee_event")
 }
