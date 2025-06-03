@@ -15,6 +15,7 @@ export class AuthService {
     const employee = await this.prisma.employee.findUnique({
       where: { email },
     });
+
     if (!employee || !(await bcrypt.compare(password, employee.password))) {
       throw new UnauthorizedException(ErrorMessages.INVALID_CREDENTIALS);
     }
@@ -22,7 +23,12 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, email: user.email };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      surname: user.surname,
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };
