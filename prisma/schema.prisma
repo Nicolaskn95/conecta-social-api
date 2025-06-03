@@ -7,16 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum EmployeeRole {
+  ADMIN
+  MANAGER
+  VOLUNTEER
+}
+
 model Employee {
   id           String   @id @default(uuid())
   name         String   @db.VarChar(30)
   surname      String   @db.VarChar(60)
   birth_date   DateTime
-  role         String   @db.VarChar(20)
   cpf          String   @unique @db.VarChar(11)
   email        String   @unique @db.VarChar(60)
   phone        String   @db.VarChar(15)
   password     String   @db.VarChar(128)
+
+  role         EmployeeRole @default(VOLUNTEER)
 
   cep          String   @db.VarChar(9)
   street       String   @db.VarChar(100)
@@ -71,9 +78,8 @@ model LogEmployeeEvent {
   log_message String   @db.VarChar(100)
   created_at  DateTime @default(now())
 
-  // Relações
-  employee Employee @relation(fields: [id_employee], references: [id], onDelete: Cascade)
-  event    Event    @relation(fields: [id_event], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [id_employee], references: [id])
+  event    Event    @relation(fields: [id_event], references: [id])
 
   @@map("log_employee_event")
 }

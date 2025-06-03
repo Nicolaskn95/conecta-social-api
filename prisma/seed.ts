@@ -13,7 +13,7 @@ async function main() {
       name: 'Admin',
       surname: 'Root',
       birth_date: new Date('1990-01-01'),
-      role: 'Administrador',
+      role: 'ADMIN',
       cpf: '00000000000',
       email: 'admin@conecta.com',
       password,
