@@ -12,6 +12,8 @@ import { EmployeeService } from '../services/employee.service';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
 import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { LoggedUser } from '@/common/decorator/user.decorator';
+import { Employee } from '@prisma/client';
 
 @Controller('employees')
 export class EmployeeController {
@@ -33,6 +35,12 @@ export class EmployeeController {
   @Get('actives')
   findAllActives() {
     return this.employeeService.findAllActives();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@LoggedUser() employee: Employee) {
+    return employee;
   }
 
   @UseGuards(JwtAuthGuard)

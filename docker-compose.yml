@@ -10,9 +10,10 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
+      - DATABASE_URL=postgres://avnadmin:AVNS_b1FTq4xENqMlckC1vFX@conectasocialdb-conectasocial.g.aivencloud.com:10562/defaultdb?sslmode=require
       - JWT_SECRET=mysecret
       - JWT_EXPIRATION=1d
+      - PORT=3001
     command: yarn start:prod
 
   db:
