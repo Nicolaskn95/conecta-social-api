@@ -106,6 +106,63 @@ jobs:
           echo "Nova versão: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Definir o nome do repositório
+        run: |
+          # Obtém o nome do repositório do Github completo
+          REPO_NAME="${{ github.repository }}"
+
+          # Quebra o valor por "/" e utiliza a última parte apenas (ex.: nome_conta_github/nome_repositorio -> nome_repositorio) 
+          REPO_NAME="${REPO_NAME#*/}"
+
+          # Armazenando o nome do repositório em uma variável, para utilizar no próximo passo
+          echo "REPO_NAME=$REPO_NAME" >> $GITHUB_ENV 
+          echo "Repositório: $REPO_NAME"
+      
+      - name: Verificar e criar repositório no Docker Hub (se necessário)
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "Verificando repositório: $REPO_NAME"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -u $DOCKERHUB_USERNAME:$DOCKERHUB_TOKEN \
+            "https://hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/$REPO_NAME/")
+          
+          if [ "$RESPONSE" -eq 404 ]; then
+            echo "Repositório não existe. Criando repositório no Docker Hub..."
+            curl -s -X POST -u $DOCKERHUB_USERNAME:$DOCKERHUB_TOKEN \
+              -H "Content-Type: application/json" \
+              -d '{"name": "'$REPO_NAME'", "is_private": true}' \
+              "https://hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/"
+            echo "Repositório $REPO_NAME criado com sucesso!"
+          else
+            echo "Repositório $REPO_NAME já existe no Docker Hub."
+          fi
+
+      - name: Criar imagem docker
+        run: |
+          echo "Iniciando build da imagem Docker para o repositório $REPO_NAME - Versão: $NEW_VERSION"
+
+          #Cria a imagem com o nome do usuário no dockerhub / nome_repositorio : tag_calculada
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$NEW_VERSION .
+
+          #Cria a tag latest da imagem
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$NEW_VERSION ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest
+
+      - name: Efetuar push da imagem
+        run: |
+          echo "Fazendo push da imagem Docker para o Docker Hub ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$NEW_VERSION" 
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:$NEW_VERSION
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest
+
       - name: Atualizar versão no package.json
         run: |
           CURRENT_PKG_VERSION=$(node -p "require('./package.json').version")
