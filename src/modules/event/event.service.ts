@@ -66,7 +66,7 @@ export class EventService {
         date: {
           gte: today,
         },
-        active: false,
+        active: true,
       },
       orderBy: {
         date: 'asc',
