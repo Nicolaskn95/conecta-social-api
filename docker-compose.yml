@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: nest-api
+    restart: always
+    ports:
+      - '3001:3001'
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://avnadmin:AVNS_b1FTq4xENqMlckC1vFX@conectasocialdb-conectasocial.g.aivencloud.com:10562/defaultdb?sslmode=require
+      - JWT_SECRET=mysecret
+      - JWT_EXPIRATION=1d
+      - PORT=3001
+    command: yarn start:prod
+
+  db:
+    image: postgres:15
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
