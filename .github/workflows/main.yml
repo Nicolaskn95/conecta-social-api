@@ -172,6 +172,19 @@ jobs:
           else
             echo "A versão já é $NEW_VERSION, nenhuma alteração necessária."
           fi
+          
+      - name: Enviar e-mail falha
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_ORIGEM }}
+          password: ${{ secrets.SENHA_EMAIL }}
+          subject: Falha no workflow do GitHub Actions
+          body: O workflow falhou no passo de testes.
+          to: ${{ secrets.EMAIL_DESTINO }}
+          from: ${{ secrets.EMAIL_ORIGEM }}
 
       - name: Commit e push
         env:
