@@ -104,13 +104,9 @@ export class EventService {
   }
 
   async getRecentEventsWithInstagramEmbeds(limit = 5) {
-    const now = new Date();
     const events = await this.prisma.event.findMany({
       where: {
         active: true,
-        date: {
-          lt: now,
-        },
         embedded_instagram: {
           not: null,
           notIn: [''],
