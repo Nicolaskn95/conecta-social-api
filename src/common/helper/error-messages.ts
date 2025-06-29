@@ -3,6 +3,7 @@ export const ErrorMessages = {
   // Employee
   EMAIL_DUPLICATE: 'Já existe um funcionário com este e-mail.',
   CPF_DUPLICATE: 'Já existe um funcionário com este CPF.',
+  INVALID_CPF: 'CPF inválido.',
   ROLE_INVALID: 'O campo role deve ser um dos seguintes: ADMIN, MANAGER, VOLUNTEER',
   INVALID_BOOLEAN: 'O valor precisa ser verdadeiro ou falso (booleano)',
   EMPLOYEE_NOT_FOUND: 'Funcionário não encontrado.',
