@@ -6,9 +6,10 @@ import { EmployeeRepositoryImpl } from './repositories/employee.repository';
 import { CreateEmployeeUseCase } from './use-cases/create-employee.use-case';
 import { UpdateEmployeeUseCase } from './use-cases/update-employee.use-case';
 import { DisableEmployeeUseCase } from './use-cases/disable-employee.use-case';
+import { LoggerModule } from '@/common/logger/logger.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, LoggerModule],
   controllers: [EmployeeController],
   providers: [
     EmployeeService,
@@ -20,6 +21,7 @@ import { DisableEmployeeUseCase } from './use-cases/disable-employee.use-case';
       useClass: EmployeeRepositoryImpl,
     },
   ],
+
   exports: [EmployeeService],
 })
 export class EmployeeModule {}
