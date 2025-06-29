@@ -94,11 +94,14 @@ jobs:
           echo "$COMMITS"
 
           while read -r COMMIT; do
-            if [[ "$COMMIT" == *"BREAKING CHANGE"* ]]; then
+            # Major (BREAKING CHANGE ou breaking change ou chore(release-major))
+            if [[ "$COMMIT" =~ ([Bb][Rr][Ee][Aa][Kk][Ii][Nn][Gg][\ _-]?[Cc][Hh][Aa][Nn][Gg][Ee]) ]] || [[ "$COMMIT" =~ "chore(release-major)" ]]; then
               MAJOR=1
-            elif [[ "$COMMIT" == *"feat"* ]]; then
+            # Minor (feat ou feature ou chore(release-minor))
+            elif [[ "$COMMIT" =~ ([Ff][Ee][Aa][Tt]) ]] || [[ "$COMMIT" =~ ([Ff][Ee][Aa][Tt][Uu][Rr][Ee]) ]] || [[ "$COMMIT" =~ "chore(release-minor)" ]]; then
               MINOR=1
-            elif [[ "$COMMIT" == *"fix"* ]]; then
+            # Patch (fix, hotfix, patch, chore(release-patch))
+            elif [[ "$COMMIT" =~ ([Ff][Ii][Xx]) ]] || [[ "$COMMIT" =~ ([Hh][Oo][Tt][Ff][Ii][Xx]) ]] || [[ "$COMMIT" =~ ([Pp][Aa][Tt][Cc][Hh]) ]] || [[ "$COMMIT" =~ "chore(release-patch)" ]]; then
               PATCH=1
             fi
           done <<< "$COMMITS"
