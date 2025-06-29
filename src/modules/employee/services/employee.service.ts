@@ -1,81 +1,62 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '@/config/prisma/prisma.service';
+import { EmployeeRepository } from '../repositories/employee.repository.interface';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
 import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
-import * as bcrypt from 'bcrypt';
 import { ErrorMessages } from '@/common/helper/error-messages';
+import { CreateEmployeeUseCase } from '../use-cases/create-employee.use-case';
+import { UpdateEmployeeUseCase } from '../use-cases/update-employee.use-case';
+import { DisableEmployeeUseCase } from '../use-cases/disable-employee.use-case';
 
 @Injectable()
 export class EmployeeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject('EmployeeRepository')
+    private readonly repository: EmployeeRepository,
+    private readonly createEmployee: CreateEmployeeUseCase,
+    private readonly updateEmployee: UpdateEmployeeUseCase,
+    private readonly disableEmployee: DisableEmployeeUseCase
+  ) {}
 
   async create(dto: CreateEmployeeDto) {
-    await this.ensureUniqueFields(dto.email, dto.cpf);
-
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    return this.prisma.employee.create({
-      data: {
-        ...dto,
-        birth_date: new Date(dto.birth_date),
-        email: dto.email.toLowerCase(),
-        password: hashedPassword,
-        active: dto.active ?? true,
-      },
-    });
+    return this.createEmployee.execute(dto);
   }
 
-  findAll() {
-    return this.prisma.employee.findMany();
+  async findAll() {
+    return this.repository.findAll();
   }
 
-  findAllActives() {
-    return this.prisma.employee.findMany({
-      where: { active: true },
-    });
+  async findAllActives() {
+    return this.repository.findAllActives();
   }
 
   async findOne(id: string) {
-    const employee = await this.prisma.employee.findUnique({ where: { id } });
-
+    const employee = await this.repository.findById(id);
     if (!employee) {
       throw new NotFoundException(ErrorMessages.EMPLOYEE_NOT_FOUND);
     }
-
     return employee;
   }
 
-  async update(id: string, data: UpdateEmployeeDto) {
-    await this.findOne(id);
-
-    return this.prisma.employee.update({ where: { id }, data });
+  async update(id: string, dto: UpdateEmployeeDto) {
+    return this.updateEmployee.execute(id, dto);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-
-    return this.prisma.employee.update({
-      where: { id },
-      data: { active: false },
-    });
+    return this.disableEmployee.execute(id);
   }
 
   private async ensureUniqueFields(email: string, cpf: string) {
-    const [existingByEmail, existingByCpf] = await Promise.all([
-      this.prisma.employee.findUnique({ where: { email } }),
-      this.prisma.employee.findUnique({ where: { cpf } }),
+    const [byEmail, byCpf] = await Promise.all([
+      this.repository.findByEmail(email),
+      this.repository.findByCpf(cpf),
     ]);
 
-    if (existingByEmail) {
-      throw new BadRequestException(ErrorMessages.EMAIL_DUPLICATE);
-    }
-
-    if (existingByCpf) {
-      throw new BadRequestException(ErrorMessages.CPF_DUPLICATE);
-    }
+    if (byEmail) throw new BadRequestException(ErrorMessages.EMAIL_DUPLICATE);
+    if (byCpf) throw new BadRequestException(ErrorMessages.CPF_DUPLICATE);
   }
 }
