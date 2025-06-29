@@ -10,10 +10,12 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION}
       - PORT=${PORT}
+      - BETTER_STACK_URL=${BETTER_STACK_URL}
+      - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN}
     command: yarn start:prod
 
   db:
