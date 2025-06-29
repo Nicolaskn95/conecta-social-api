@@ -1,99 +1,189 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📦 Conecta Social API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API do projeto Conecta Social, desenvolvida em **NestJS + PostgreSQL** com suporte a **Docker Compose** para facilitar o desenvolvimento e a execução.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🚀 Tecnologias
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [NestJS](https://nestjs.com/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Prisma ORM](https://www.prisma.io/)
+- [Docker](https://www.docker.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
 
-## Project setup
+---
+
+## ✅ Requisitos
+
+- Docker e Docker Compose instalados
+- Node.js (opcional para desenvolvimento local sem Docker)
+
+---
+
+## 📁 Setup do Projeto
+
+### 1. Clone o repositório
 
 ```bash
-$ yarn install
+git clone https://github.com/seu-usuario/conecta-social-api.git
+cd conecta-social-api
 ```
 
-## Compile and run the project
+### 2. Crie um arquivo `.env`
+
+Você pode usar o modelo `.env.example` (caso exista) ou criar um novo:
+
+```env
+# .env
+DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
+JWT_SECRET=algumasecret
+JWT_EXPIRATION=3600s
+PORT=3001
+
+# Logs/observabilidade
+BETTER_STACK_URL=
+BETTER_STACK_TOKEN=
+```
+
+---
+
+## 🐳 Usando Docker Compose
+
+### 🔧 Build e iniciar containers
 
 ```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+docker compose up --build
 ```
 
-## Run tests
+### ⏹ Parar os containers
 
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+docker compose down
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 🔄 Parar e apagar volumes (banco zerado)
 
 ```bash
-$ npm install -g mau
-$ mau deploy
+docker compose down -v
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## 🧪 Comandos úteis
 
-Check out a few resources that may come in handy when working with NestJS:
+### Rodar apenas a API (sem rebuild)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+docker compose up api
+```
 
-## Support
+### Rebuild forçado da API (útil após alterações no Dockerfile ou dependências)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+docker compose up --build api
+```
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## ⚙️ Executando sem Docker (modo local)
 
-## License
+Você também pode rodar a API localmente, sem o uso do Docker:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 1. Instale as dependências
+
+```bash
+yarn install
+```
+
+### 2. Configure o banco de dados local
+
+Certifique-se de que você tenha um PostgreSQL rodando localmente e um arquivo `.env` com as seguintes variáveis:
+
+```env
+DATABASE_URL=postgresql://usuario:senha@localhost:5432/mydb
+JWT_SECRET=algumasecret
+JWT_EXPIRATION=1d
+PORT=3001
+```
+
+### 3. Execute as migrations e o seed (opcional)
+
+```bash
+yarn prisma generate
+yarn prisma migrate deploy
+yarn seed:prod
+```
+
+### 4. Inicie a aplicação
+
+```bash
+yarn run dev
+```
+
+A aplicação será iniciada em modo desenvolvimento na porta definida (ex: `http://localhost:3001`).
+
+---
+
+## 🔐 Autenticação
+
+A autenticação usa JWT. As variáveis `JWT_SECRET` e `JWT_EXPIRATION` controlam a geração e validação de tokens.
+
+---
+
+## 🧬 Prisma
+
+O script `entrypoint.sh` dentro do container da API executa automaticamente:
+
+- `prisma generate`
+- `prisma migrate deploy`
+- `yarn seed:prod` (popula dados iniciais)
+
+Se quiser rodar manualmente:
+
+```bash
+docker exec -it nest-api yarn prisma migrate deploy
+docker exec -it nest-api yarn prisma studio
+```
+
+---
+
+## 🧩 Estrutura de serviços (Docker Compose)
+
+| Serviço | Porta | Descrição                    |
+|---------|-------|------------------------------|
+| `db`    | 5432  | PostgreSQL                   |
+| `api`   | 3001  | API NestJS em produção       |
+
+---
+
+## 🐛 Troubleshooting
+
+### ❌ `Can't reach database server at localhost:5432`
+
+> Provavelmente está usando `localhost` na `DATABASE_URL`.
+
+✅ Solução: use `db` (nome do serviço no docker-compose), por exemplo:  
+`postgresql://postgres:postgres@db:5432/mydb`
+
+---
+
+## 🤝 Contribuindo
+
+1. Fork este repositório
+2. Crie uma branch: `git checkout -b minha-feature`
+3. Faça commit das mudanças: `git commit -m 'feat: minha nova feature'`
+4. Push para a branch: `git push origin minha-feature`
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+Este projeto está licenciado sob a [MIT License](LICENSE).
+
+---
+
+## 💡 Contato
+
+Desenvolvido com 💙 por [Maicon Santos](https://github.com/maiconmaul), [Matheus Tadao](https://github.com/tadaomomiy) e [Nicolas Nagano](https://github.com/Nicolaskn95)
