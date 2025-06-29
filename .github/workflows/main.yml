@@ -150,7 +150,7 @@ jobs:
       - name: Deploy to Render.com
         run: |
           echo "Disparando deploy na Render..."
-          curl -X POST https://api.render.com/deploy/srv-d1fc59mr433s73b4dc3g?key=YvA-A4sJwhk
+          curl -X POST ${{ secrets.RENDER_DEPLOY_URL }}
 
       - name: Atualizar versão no package.json
         run: |
