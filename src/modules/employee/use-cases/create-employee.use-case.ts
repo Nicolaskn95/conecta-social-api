@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { LoggerService } from '@/common/logger/logger.service';
 import * as bcrypt from 'bcrypt';
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
 
@@ -11,13 +12,18 @@ import { Employee } from '@prisma/client';
 export class CreateEmployeeUseCase {
   constructor(
     @Inject('EmployeeRepository')
-    private readonly repository: EmployeeRepository
+    private readonly repository: EmployeeRepository,
+    private readonly logger: LoggerService
   ) {}
 
   async execute(dto: CreateEmployeeDto): Promise<Employee> {
     const cleanedCpf = dto.cpf.replace(/\D/g, '');
 
     if (!cpfValidator.isValid(cleanedCpf)) {
+      await this.logger.error(
+        `CPF inválido: ${cleanedCpf}`,
+        'CreateEmployeeUseCase'
+      );
       throw new BadRequestException(ErrorMessages.INVALID_CPF);
     }
 
@@ -25,6 +31,7 @@ export class CreateEmployeeUseCase {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+    await this.logger.log('Novo funcionário criado', 'CreateEmployeeUseCase');
     return this.repository.create(
       {
         ...dto,

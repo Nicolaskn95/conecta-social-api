@@ -1,12 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import ErrorFilter from './common/filter/error.filter';
-import { ResponseInterceptor } from './common/interceptor/response.interceptors';
+import { ResponseInterceptor } from './common/interceptor/response.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import pino from 'pino-http';
+import { LoggerService } from './common/logger/logger.service';
+import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
+  const logger = app.get(LoggerService); // ✅ simples e funciona
 
   app.useGlobalFilters(new ErrorFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
@@ -17,6 +21,15 @@ async function bootstrap() {
       transform: true, // habilita o transform para DTOs
     })
   );
+  app.use(
+    pino({
+      transport: {
+        target: 'pino-pretty',
+      },
+    })
+  );
+  app.useGlobalInterceptors(new LoggingInterceptor(logger));
+
   const config = new DocumentBuilder()
     .setTitle('API Conecta Social')
     .setDescription('Documentação da API de Funcionários')

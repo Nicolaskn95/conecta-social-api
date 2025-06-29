@@ -9,76 +9,102 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
+@ApiTags('Events')
 @Controller('events')
 export class EventController {
   constructor(private readonly eventService: EventService) {}
 
-  // Public endpoints for fetching events
+  // 🔓 Public endpoints
   @Get('upcoming')
+  @ApiOperation({ summary: 'Listar próximos eventos' })
+  @ApiResponse({ status: 200, description: 'Lista de eventos futuros' })
   getUpcomingEvents(@Query('limit') limit?: string) {
-    console.log('Fetching upcoming events');
     const take = limit ? parseInt(limit, 10) : 5;
     return this.eventService.getUpcomingEvents(take);
   }
 
   @Get('recent')
+  @ApiOperation({ summary: 'Listar eventos recentes' })
+  @ApiResponse({ status: 200, description: 'Lista de eventos recentes' })
   getRecentEvents(@Query('limit') limit?: string) {
-    console.log('Fetching recent events');
     const take = limit ? parseInt(limit, 10) : 5;
     return this.eventService.getRecentEvents(take);
   }
 
   @Get('recent-with-instagram')
+  @ApiOperation({ summary: 'Listar eventos recentes com embed do Instagram' })
+  @ApiResponse({ status: 200, description: 'Eventos com embeds do Instagram' })
   getRecentWithInstagram(@Query('limit') limit?: string) {
     const take = limit ? parseInt(limit, 10) : 5;
     return this.eventService.getRecentEventsWithInstagramEmbeds(take);
   }
 
-  // Protected endpoints for event management
+  // 🔐 Protected endpoints
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Post()
+  @ApiOperation({ summary: 'Criar novo evento' })
+  @ApiResponse({ status: 201, description: 'Evento criado com sucesso' })
   create(@Body() dto: CreateEventDto) {
-    console.log('Creating event with data:', dto);
     return this.eventService.create(dto);
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get()
+  @ApiOperation({ summary: 'Listar todos os eventos (admin)' })
+  @ApiResponse({ status: 200, description: 'Lista de eventos (admin)' })
   async findAll() {
-    console.log('Fetching all events');
     return this.eventService.findAll();
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get('actives')
+  @ApiOperation({ summary: 'Listar todos os eventos ativos' })
+  @ApiResponse({ status: 200, description: 'Eventos ativos (admin)' })
   findAllActives() {
-    console.log('Fetching all active events');
     return this.eventService.findAllActives();
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get(':id')
+  @ApiOperation({ summary: 'Buscar evento por ID' })
+  @ApiResponse({ status: 200, description: 'Detalhes do evento encontrado' })
+  @ApiResponse({ status: 404, description: 'Evento não encontrado' })
   findOne(@Param('id') id: string) {
-    console.log(`Fetching event with ID: ${id}`);
     return this.eventService.findOne(id);
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Put(':id')
+  @ApiOperation({ summary: 'Atualizar evento por ID' })
+  @ApiResponse({ status: 200, description: 'Evento atualizado com sucesso' })
+  @ApiResponse({ status: 404, description: 'Evento não encontrado' })
   update(@Param('id') id: string, @Body() dto: UpdateEventDto) {
-    console.log(`Updating event with ID: ${id} with data:`, dto);
     return this.eventService.update(id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Delete(':id')
+  @ApiOperation({ summary: 'Desativar (soft delete) um evento' })
+  @ApiResponse({ status: 200, description: 'Evento desativado com sucesso' })
+  @ApiResponse({ status: 404, description: 'Evento não encontrado' })
   remove(@Param('id') id: string) {
-    console.log(`Removing event with ID: ${id}`);
     return this.eventService.remove(id);
   }
 }
