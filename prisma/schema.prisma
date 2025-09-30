@@ -83,3 +83,20 @@ model LogEmployeeEvent {
 
   @@map("log_employee_event")
 }
+
+model Family {
+  id            String   @id @default(uuid())
+  name          String   @db.VarChar(60)
+  street        String   @db.VarChar(60)
+  number        String   @db.VarChar(20)
+  neighborhood String   @db.VarChar(60)
+  city          String   @db.VarChar(30)
+  uf            String   @db.VarChar(2)
+  state         String   @db.VarChar(20)
+  cep           String   @db.VarChar(9)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  active        Boolean  @default(true)
+
+  @@map("families")
+}

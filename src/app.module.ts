@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { EventModule } from './modules/event/event.module';
 import { LoggerModule } from './common/logger/logger.module';
+import { FamilyModule } from './modules/family/family.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { LoggerModule } from './common/logger/logger.module';
     EmployeeModule,
     EventModule,
     LoggerModule,
+    FamilyModule,
   ],
   controllers: [AppController],
   providers: [],
