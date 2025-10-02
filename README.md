@@ -186,4 +186,4 @@ Este projeto está licenciado sob a [MIT License](LICENSE).
 
 ## 💡 Contato
 
-Desenvolvido com 💙 por [Maicon Santos](https://github.com/maiconmaul), [Matheus Tadao](https://github.com/tadaomomiy) e [Nicolas Nagano](https://github.com/Nicolaskn95)# ms-cs-dashboard
+Desenvolvido com 💙 por [Maicon Santos](https://github.com/maiconmaul), [Matheus Tadao](https://github.com/tadaomomiy) e [Nicolas Nagano](https://github.com/Nicolaskn95)
