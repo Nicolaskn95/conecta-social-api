@@ -6,6 +6,8 @@ import { EmployeeModule } from './modules/employee/employee.module';
 import { EventModule } from './modules/event/event.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { FamilyModule } from './modules/family/family.module';
+import { CategoryModule } from './modules/category/category.module';
+import { DonationModule } from './modules/donation/donation.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { FamilyModule } from './modules/family/family.module';
     EventModule,
     LoggerModule,
     FamilyModule,
+    CategoryModule,
+    DonationModule,
   ],
   controllers: [AppController],
   providers: [],
