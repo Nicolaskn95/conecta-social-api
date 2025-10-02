@@ -30,7 +30,6 @@ model Employee {
   neighborhood String   @db.VarChar(60)
   number       String   @db.VarChar(20)
   city         String   @db.VarChar(30)
-  uf           String   @db.VarChar(2)
   state        String   @db.VarChar(20)
   complement   String?  @db.VarChar(30)
 
@@ -57,7 +56,6 @@ model Event {
   neighborhood         String   @db.VarChar(30)
   number               String   @db.VarChar(20)
   city                 String   @db.VarChar(30)
-  uf                   String   @db.VarChar(2)
   state                String   @db.VarChar(20)
   cep                  String   @db.VarChar(9)
   complement           String?  @db.VarChar(30)
@@ -89,9 +87,8 @@ model Family {
   name          String   @db.VarChar(60)
   street        String   @db.VarChar(60)
   number        String   @db.VarChar(20)
-  neighborhood String   @db.VarChar(60)
+  neighborhood  String   @db.VarChar(60)
   city          String   @db.VarChar(30)
-  uf            String   @db.VarChar(2)
   state         String   @db.VarChar(20)
   cep           String   @db.VarChar(9)
   created_at    DateTime @default(now())
@@ -99,4 +96,34 @@ model Family {
   active        Boolean  @default(true)
 
   @@map("families")
+}
+model Category {
+  id             String    @id @default(uuid())
+  name           String    @db.VarChar(25)
+  measure_unity  String    @db.VarChar(10)
+  created_at     DateTime  @default(now())
+  active         Boolean   @default(true)
+
+  Donation Donation[]
+  @@map("categories")
+}
+
+model Donation {
+  id               String    @id @default(uuid())
+  category_id      String    
+  name             String    @db.VarChar(60)
+  description      String?   @db.VarChar(250)
+  initial_quantity Int       @default(0)
+  current_quantity Int       @default(0)
+  donator_name     String?   @db.VarChar(90)
+  gender           String?   @db.VarChar(10)
+  size             String?   @db.VarChar(20)
+  active           Boolean   @default(true)
+  available        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  
+  category         Category  @relation(fields: [category_id], references: [id])
+
+  @@map("donations")
 }

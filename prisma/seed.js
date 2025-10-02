@@ -22,7 +22,6 @@ async function main() {
             neighborhood: 'Centro',
             number: '100',
             city: 'São Paulo',
-            uf: 'SP',
             state: 'São Paulo',
             active: true,
         },
