@@ -124,4 +124,39 @@ export class EventService {
 
     return events;
   }
+
+  async findAllPaginated(page = 1, size = 10) {
+    console.log('📍 Iniciando findAllPaginated:', { page, size });
+    const skip = (page - 1) * size;
+
+    try {
+      const [events, total] = await Promise.all([
+        this.prisma.event.findMany({
+          skip,
+          take: size,
+          orderBy: { date: 'desc' },
+          where: { active: true },
+        }),
+        this.prisma.event.count({ where: { active: true } }),
+      ]);
+
+      const totalPages = Math.ceil(total / size);
+      const isLastPage = page >= totalPages;
+
+      const response = {
+        page,
+        next_page: isLastPage ? page : page + 1,
+        is_last_page: isLastPage,
+        previous_page: page > 1 ? page - 1 : 1,
+        total_pages: totalPages,
+        list: events,
+      };
+
+      console.log('📍 Resposta montada:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Erro em findAllPaginated:', error);
+      throw error;
+    }
+  }
 }

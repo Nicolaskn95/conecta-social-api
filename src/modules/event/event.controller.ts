@@ -80,6 +80,34 @@ export class EventController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Get('paginated')
+  @ApiOperation({ summary: 'Listar eventos com paginação' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de eventos',
+    schema: {
+      example: {
+        page: 1,
+        next_page: 2,
+        is_last_page: false,
+        previous_page: 1,
+        total_pages: 5,
+        list: [],
+      },
+    },
+  })
+  async findAllPaginated(
+    @Query('page') page?: string,
+    @Query('size') size?: string
+  ) {
+    console.log('📍 Controller - findAllPaginated chamado:', { page, size });
+    const pageNumber = page ? parseInt(page, 10) : 1; // Ajustado para começar em 1
+    const pageSize = size ? parseInt(size, 10) : 10;
+    return this.eventService.findAllPaginated(pageNumber, pageSize);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({ summary: 'Buscar evento por ID' })
   @ApiResponse({ status: 200, description: 'Detalhes do evento encontrado' })
