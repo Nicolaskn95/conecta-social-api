@@ -5,7 +5,7 @@ export class ResponseHelper {
     statusCode = 200
   ) {
     return {
-      status_code: statusCode,
+      code: statusCode,
       success: true,
       message,
       data,
@@ -14,7 +14,7 @@ export class ResponseHelper {
 
   static error(message: string, statusCode = 400) {
     return {
-      status_code: statusCode,
+      code: statusCode,
       success: false,
       message,
       data: null,

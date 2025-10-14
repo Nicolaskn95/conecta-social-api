@@ -18,7 +18,7 @@ export class ResponseInterceptor implements NestInterceptor {
         if (
           data &&
           typeof data === 'object' &&
-          'status_code' in data &&
+          'code' in data &&
           'success' in data &&
           'message' in data &&
           'data' in data
@@ -27,7 +27,7 @@ export class ResponseInterceptor implements NestInterceptor {
         }
 
         return {
-          status_code: response.statusCode,
+          code: response.statusCode,
           success: response.statusCode >= 200 && response.statusCode < 300,
           message: response.statusMessage ?? 'Requisição bem-sucedida',
           data,
