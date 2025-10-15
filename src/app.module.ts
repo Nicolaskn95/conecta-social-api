@@ -8,6 +8,8 @@ import { LoggerModule } from './common/logger/logger.module';
 import { FamilyModule } from './modules/family/family.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DonationModule } from './modules/donation/donation.module';
+import { EmailModule } from './modules/email/email.module';
+import { PasswordResetModule } from './modules/password-reset/password-reset.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { DonationModule } from './modules/donation/donation.module';
     FamilyModule,
     CategoryModule,
     DonationModule,
+    EmailModule,
+    PasswordResetModule,
   ],
   controllers: [AppController],
   providers: [],

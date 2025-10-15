@@ -1,0 +1,213 @@
+<html lang='pt-BR'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Bem-vindo ao Conecta Social</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333333;
+        background-color: #f8fafc;
+      }
+
+      .email-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .header {
+        background: linear-gradient(135deg, #387aa1 0%, #2c5f7c 100%);
+        color: white;
+        padding: 40px 30px;
+        text-align: center;
+        position: relative;
+      }
+
+      .header-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .logo {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .tagline {
+        font-size: 14px;
+        opacity: 0.9;
+        font-weight: 300;
+      }
+
+      .content {
+        padding: 40px 30px;
+      }
+
+      .greeting {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 20px;
+      }
+
+      .message {
+        font-size: 16px;
+        color: #4a5568;
+        margin-bottom: 30px;
+        line-height: 1.7;
+      }
+
+      .features {
+        margin: 30px 0;
+      }
+
+      .feature-item {
+        display: flex;
+        align-items: center;
+        margin: 16px 0;
+        padding: 12px;
+        background-color: #f7fafc;
+        border-radius: 8px;
+        border-left: 4px solid #387aa1;
+      }
+
+      .feature-icon {
+        font-size: 20px;
+        margin-right: 12px;
+        color: #387aa1;
+      }
+
+      .feature-text {
+        font-size: 14px;
+        color: #4a5568;
+      }
+
+      .button-container {
+        text-align: center;
+        margin: 30px 0;
+      }
+
+      .button {
+        display: inline-block;
+        background: linear-gradient(135deg, #387aa1 0%, #2c5f7c 100%);
+        color: white !important;
+        padding: 16px 32px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(56, 122, 161, 0.3);
+      }
+
+      .footer {
+        background-color: #f8fafc;
+        padding: 30px;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      .footer-text {
+        font-size: 12px;
+        color: #718096;
+        margin-bottom: 8px;
+      }
+
+      .footer-logo {
+        font-size: 16px;
+        font-weight: 700;
+        color: #387aa1;
+        margin-bottom: 16px;
+      }
+
+      @media (max-width: 600px) {
+        .email-container {
+          margin: 0;
+          border-radius: 0;
+        }
+
+        .header,
+        .content,
+        .footer {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class='email-container'>
+      <div class='header'>
+        <div class='header-content'>
+          <div class='logo'>🎉 Conecta Social</div>
+          <div class='tagline'>Conectando pessoas, transformando vidas</div>
+        </div>
+      </div>
+
+      <div class='content'>
+        <div class='greeting'>Bem-vindo(a), {{name}}!</div>
+
+        <div class='message'>
+          É um prazer tê-lo(a) conosco! Sua conta foi criada com sucesso no
+          Conecta Social.
+          <br /><br />
+          Agora você pode começar a fazer a diferença na sua comunidade.
+        </div>
+
+        <div class='features'>
+          <div class='feature-item'>
+            <span class='feature-icon'>🤝</span>
+            <span class='feature-text'>Participe de eventos e ações sociais</span>
+          </div>
+          <div class='feature-item'>
+            <span class='feature-icon'>📊</span>
+            <span class='feature-text'>Acompanhe o impacto das suas
+              contribuições</span>
+          </div>
+          <div class='feature-item'>
+            <span class='feature-icon'>👥</span>
+            <span class='feature-text'>Conecte-se com outros voluntários</span>
+          </div>
+          <div class='feature-item'>
+            <span class='feature-icon'>🎯</span>
+            <span class='feature-text'>Transforme vidas através da solidariedade</span>
+          </div>
+        </div>
+
+        <div class='button-container'>
+          <a href='{{dashboardUrl}}' class='button'>🚀 Acessar Dashboard</a>
+        </div>
+
+        <div class='message'>
+          Se você tiver alguma dúvida, não hesite em entrar em contato conosco.
+          <br /><br />
+          Obrigado por fazer parte da nossa missão!
+        </div>
+      </div>
+
+      <div class='footer'>
+        <div class='footer-logo'>Conecta Social</div>
+        <div class='footer-text'>
+          Este é um email automático, não responda a esta mensagem.
+        </div>
+        <div class='footer-text'>
+          © 2024 Conecta Social. Todos os direitos reservados.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
