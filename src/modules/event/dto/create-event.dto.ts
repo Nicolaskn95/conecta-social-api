@@ -62,10 +62,6 @@ export class CreateEventDto {
   @IsString()
   city: string;
 
-  @ApiProperty({ example: 'SP' })
-  @IsString()
-  uf: string;
-
   @ApiProperty({ example: 'São Paulo' })
   @IsString()
   state: string;

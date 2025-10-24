@@ -92,12 +92,6 @@ export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
   @IsNotEmpty()
   city?: string;
 
-  @ApiPropertyOptional({ example: 'SP' })
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  uf?: string;
-
   @ApiPropertyOptional({ example: 'São Paulo' })
   @IsOptional()
   @IsString()
