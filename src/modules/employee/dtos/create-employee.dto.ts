@@ -118,14 +118,6 @@ export class CreateEmployeeDto {
   city: string;
 
   @ApiProperty({
-    example: 'SP',
-    description: 'UF do estado',
-  })
-  @IsString()
-  @IsNotEmpty()
-  uf: string;
-
-  @ApiProperty({
     example: 'São Paulo',
     description: 'Nome completo do estado',
   })
