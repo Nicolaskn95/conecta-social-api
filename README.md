@@ -146,6 +146,8 @@ A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints pr
 ## 🔗 Links úteis
 - Backend (produção): https://conecta-social-api.onrender.com
 - Swagger (API docs): https://conecta-social-api.onrender.com/api/docs
+- Frontend (produção): https://conecta-social-fatec.vercel.app/
+- Repositório frontend: https://github.com/Nicolaskn95/conecta-social-web
 
 ## 🤝 Contribuição
 
@@ -163,10 +165,23 @@ A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints pr
 
 Este projeto está licenciado sob a [MIT License](LICENSE).
 
-## 💡 Contato
+## 📞 Contato
 
-Desenvolvido por Maicon Santos, Matheus Tadao, Nicolas Nagano e colaboradores.  
-Repositório: (link do seu repositório)
+**Conecta Social**
+
+- Website: [conectasocial.com](conecta-social-fatec.vercel.app/)
+- **Desenvolvedores:**
+> Maicon Rodrigues dos Santos ([GitHub](github.com/maiconmaul))
+
+> Nicolas Katsuji Nagano ([GitHub](github.com/Nicolaskn95))
+
+> Caio Fernando Scudeler
+
+> Nicollas Mencacci Pereira
 
 ---
-Feito com 💙 para apoiar projetos sociais.
+
+<div align="center">
+  <p>Feito com ❤️ para transformar vidas através da solidariedade</p>
+  <p>🌱 <strong>Conecta Social</strong> - Conectando tecnologia com projetos sociais</p>
+</div>
