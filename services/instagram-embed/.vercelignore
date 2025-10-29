@@ -1,0 +1,26 @@
+# Ignorar arquivos desnecessários para o deploy
+node_modules
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.production
+.env.development
+dist
+coverage
+.nyc_output
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignorar outros serviços que não são necessários
+services/*/node_modules
+services/*/package-lock.json
+services/*/README.md
+
+# Manter apenas o serviço instagram-embed
+!services/instagram-embed/
