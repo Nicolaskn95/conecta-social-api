@@ -179,6 +179,8 @@ Este projeto está licenciado sob a [MIT License](LICENSE).
 
 > Nicollas Mencacci Pereira
 
+> Matheus Tadao Momiy
+
 ---
 
 <div align="center">
