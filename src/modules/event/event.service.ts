@@ -3,19 +3,32 @@ import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
+import { InstagramValidatorService } from './services/instagram-validator.service';
 
 @Injectable()
 export class EventService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private instagramValidator: InstagramValidatorService
+  ) {}
 
-  create(dto: CreateEventDto) {
-    return this.prisma.event.create({
-      data: {
-        ...dto,
-        date: new Date(dto.date),
-        active: dto.active ?? true,
-      },
-    });
+  async create(dto: CreateEventDto) {
+    const eventData = await this.prepareEventData(dto);
+    return this.prisma.event.create({ data: eventData });
+  }
+
+  private async prepareEventData(dto: CreateEventDto) {
+    if (dto.embedded_instagram) {
+      dto.embedded_instagram = await this.instagramValidator.validate(
+        dto.embedded_instagram
+      );
+    }
+
+    return {
+      ...dto,
+      date: new Date(dto.date),
+      active: dto.active ?? true,
+    };
   }
 
   findAll() {
