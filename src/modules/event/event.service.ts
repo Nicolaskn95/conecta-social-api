@@ -1,15 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
 import { InstagramValidatorService } from './services/instagram-validator.service';
+import { InstagramEmbedService } from './services/instagram-embed.service';
 
 @Injectable()
 export class EventService {
   constructor(
     private prisma: PrismaService,
-    private instagramValidator: InstagramValidatorService
+    private instagramValidator: InstagramValidatorService,
+    private instagramEmbedService: InstagramEmbedService
   ) {}
 
   async create(dto: CreateEventDto) {
@@ -117,6 +123,25 @@ export class EventService {
   }
 
   async getRecentEventsWithInstagramEmbeds(limit = 5) {
+    try {
+      const events = await this.fetchRecentWithInstagramLinks(limit);
+      const urls = this.extractUrls(events);
+
+      // se não há urls, retorna eventos (defensivo)
+      if (urls.length === 0) return events;
+
+      const embeds = await this.instagramEmbedService.generateEmbeds(urls);
+      return this.mergeEmbedsWithEvents(events, embeds);
+    } catch (err) {
+      console.error('Erro ao gerar embeds para eventos recentes:', err);
+      // mantém comportamento consistente: propaga BadRequest para problemas com microserviço
+      throw err instanceof BadRequestException
+        ? err
+        : new BadRequestException('Não foi possível obter embeds do Instagram');
+    }
+  }
+
+  private async fetchRecentWithInstagramLinks(limit: number) {
     const events = await this.prisma.event.findMany({
       where: {
         active: true,
@@ -125,17 +150,33 @@ export class EventService {
           notIn: [''],
         },
       },
-      orderBy: {
-        date: 'desc',
-      },
+      orderBy: { date: 'desc' },
       take: limit,
     });
 
-    if (events.length === 0) {
+    if (!events || events.length === 0) {
       throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
     }
 
     return events;
+  }
+
+  private extractUrls(events: any[]): string[] {
+    return events
+      .map((e) =>
+        typeof e.embedded_instagram === 'string' ? e.embedded_instagram : null
+      )
+      .filter((u): u is string => !!u);
+  }
+
+  private mergeEmbedsWithEvents(events: any[], embeds: string[]) {
+    return events.map((event, idx) => {
+      const embedHtml = embeds[idx] ?? event.embedded_instagram;
+      return {
+        ...event,
+        embedded_instagram: embedHtml,
+      };
+    });
   }
 
   async findAllPaginated(page = 1, size = 10) {
