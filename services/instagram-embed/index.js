@@ -17,14 +17,14 @@ const swaggerOptions = {
       description: 'Microserviço para gerar embeds HTML de posts do Instagram',
       contact: {
         name: 'Instagram Embed Service',
-        email: 'support@example.com'
-      }
+        email: 'support@example.com',
+      },
     },
     servers: [
       {
         url: `http://localhost:${PORT}`,
-        description: 'Servidor de desenvolvimento'
-      }
+        description: 'Servidor de desenvolvimento',
+      },
     ],
     components: {
       schemas: {
@@ -36,35 +36,37 @@ const swaggerOptions = {
               type: 'array',
               items: {
                 type: 'string',
-                example: 'https://www.instagram.com/p/POST_ID/'
+                example: 'https://www.instagram.com/p/POST_ID/',
               },
-              description: 'Lista de URLs do Instagram'
-            }
-          }
+              description: 'Lista de URLs do Instagram',
+            },
+          },
         },
         GenerateEmbedsResponse: {
           type: 'object',
           properties: {
             success: {
               type: 'boolean',
-              example: true
+              example: true,
             },
             embeds: {
               type: 'array',
               items: {
-                type: 'string'
+                type: 'string',
               },
-              example: ['<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/POST_ID/" data-instgrm-version="14"></blockquote>']
+              example: [
+                '<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/POST_ID/" data-instgrm-version="14"></blockquote>',
+              ],
             },
             total: {
               type: 'number',
-              example: 1
+              example: 1,
             },
             processed: {
               type: 'number',
-              example: 1
-            }
-          }
+              example: 1,
+            },
+          },
         },
         ValidateUrlRequest: {
           type: 'object',
@@ -73,70 +75,70 @@ const swaggerOptions = {
             url: {
               type: 'string',
               example: 'https://www.instagram.com/p/POST_ID/',
-              description: 'URL do Instagram para validar'
-            }
-          }
+              description: 'URL do Instagram para validar',
+            },
+          },
         },
         ValidateUrlResponse: {
           type: 'object',
           properties: {
             success: {
               type: 'boolean',
-              example: true
+              example: true,
             },
             url: {
               type: 'string',
-              example: 'https://www.instagram.com/p/POST_ID/'
+              example: 'https://www.instagram.com/p/POST_ID/',
             },
             isValid: {
               type: 'boolean',
-              example: true
+              example: true,
             },
             postId: {
               type: 'string',
-              example: 'POST_ID'
+              example: 'POST_ID',
             },
             message: {
               type: 'string',
-              example: 'URL válida do Instagram'
-            }
-          }
+              example: 'URL válida do Instagram',
+            },
+          },
         },
         HealthResponse: {
           type: 'object',
           properties: {
             status: {
               type: 'string',
-              example: 'OK'
+              example: 'OK',
             },
             service: {
               type: 'string',
-              example: 'instagram-embed'
+              example: 'instagram-embed',
             },
             timestamp: {
               type: 'string',
               format: 'date-time',
-              example: '2024-01-01T00:00:00.000Z'
-            }
-          }
+              example: '2024-01-01T00:00:00.000Z',
+            },
+          },
         },
         ErrorResponse: {
           type: 'object',
           properties: {
             error: {
               type: 'string',
-              example: 'Mensagem de erro'
+              example: 'Mensagem de erro',
             },
             message: {
               type: 'string',
-              example: 'Detalhes do erro'
-            }
-          }
-        }
-      }
-    }
+              example: 'Detalhes do erro',
+            },
+          },
+        },
+      },
+    },
   },
-  apis: ['./index.js']
+  apis: ['./index.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -154,11 +156,11 @@ function extractPostId(url) {
     // Regex para capturar o POST_ID de URLs do Instagram
     const regex = /https:\/\/www\.instagram\.com\/p\/([A-Za-z0-9_-]+)\/?/;
     const match = url.match(regex);
-    
+
     if (match && match[1]) {
       return match[1];
     }
-    
+
     return null;
   } catch (error) {
     console.error('Erro ao extrair POST_ID:', error);
@@ -186,10 +188,10 @@ function generateInstagramEmbed(postId, originalUrl) {
  */
 function processInstagramUrls(urls) {
   const embeds = [];
-  
+
   for (const url of urls) {
     const postId = extractPostId(url);
-    
+
     if (postId) {
       const embed = generateInstagramEmbed(postId, url);
       embeds.push(embed);
@@ -199,7 +201,7 @@ function processInstagramUrls(urls) {
       embeds.push(`<!-- URL inválida: ${url} -->`);
     }
   }
-  
+
   return embeds;
 }
 
@@ -256,35 +258,34 @@ function processInstagramUrls(urls) {
 app.post('/generate-embeds', (req, res) => {
   try {
     const { urls } = req.body;
-    
+
     // Validação da entrada
     if (!urls || !Array.isArray(urls)) {
       return res.status(400).json({
-        error: 'Body deve conter um array "urls" com links do Instagram'
+        error: 'Body deve conter um array "urls" com links do Instagram',
       });
     }
-    
+
     if (urls.length === 0) {
       return res.status(400).json({
-        error: 'Array "urls" não pode estar vazio'
+        error: 'Array "urls" não pode estar vazio',
       });
     }
-    
+
     // Processa as URLs e gera os embeds
     const embeds = processInstagramUrls(urls);
-    
+
     res.json({
       success: true,
       embeds: embeds,
       total: embeds.length,
-      processed: urls.length
+      processed: urls.length,
     });
-    
   } catch (error) {
     console.error('Erro no endpoint:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -351,30 +352,31 @@ app.post('/generate-embeds', (req, res) => {
 app.post('/validate-url', (req, res) => {
   try {
     const { url } = req.body;
-    
+
     // Validação da entrada
     if (!url || typeof url !== 'string') {
       return res.status(400).json({
-        error: 'Body deve conter uma string "url"'
+        error: 'Body deve conter uma string "url"',
       });
     }
-    
+
     const postId = extractPostId(url);
     const isValid = postId !== null;
-    
+
     res.json({
       success: true,
       url: url,
       isValid: isValid,
       postId: postId,
-      message: isValid ? 'URL válida do Instagram' : 'URL inválida do Instagram'
+      message: isValid
+        ? 'URL válida do Instagram'
+        : 'URL inválida do Instagram',
     });
-    
   } catch (error) {
     console.error('Erro no endpoint validate-url:', error);
     res.status(500).json({
       error: 'Erro interno do servidor',
-      message: error.message
+      message: error.message,
     });
   }
 });
@@ -402,7 +404,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     service: 'instagram-embed',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -443,31 +445,31 @@ app.get('/', (req, res) => {
       'POST /generate-embeds': {
         description: 'Gera embeds HTML para posts do Instagram',
         body: {
-          urls: ['https://www.instagram.com/p/POST_ID/']
+          urls: ['https://www.instagram.com/p/POST_ID/'],
         },
         response: {
           success: true,
           embeds: ['<blockquote class="instagram-media"...>'],
           total: 1,
-          processed: 1
-        }
+          processed: 1,
+        },
       },
       'POST /validate-url': {
         description: 'Valida se uma URL é válida do Instagram',
         body: {
-          url: 'https://www.instagram.com/p/POST_ID/'
+          url: 'https://www.instagram.com/p/POST_ID/',
         },
         response: {
           success: true,
           url: 'https://www.instagram.com/p/POST_ID/',
           isValid: true,
           postId: 'POST_ID',
-          message: 'URL válida do Instagram'
-        }
+          message: 'URL válida do Instagram',
+        },
       },
       'GET /health': 'Health check do serviço',
-      'GET /api-docs': 'Documentação Swagger da API'
-    }
+      'GET /api-docs': 'Documentação Swagger da API',
+    },
   });
 });
 
@@ -476,7 +478,7 @@ app.use((err, req, res, next) => {
   console.error('Erro não tratado:', err);
   res.status(500).json({
     error: 'Erro interno do servidor',
-    message: err.message
+    message: err.message,
   });
 });
 
@@ -484,16 +486,26 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({
     error: 'Endpoint não encontrado',
-    availableEndpoints: ['POST /generate-embeds', 'POST /validate-url', 'GET /health', 'GET /', 'GET /api-docs']
+    availableEndpoints: [
+      'POST /generate-embeds',
+      'POST /validate-url',
+      'GET /health',
+      'GET /',
+      'GET /api-docs',
+    ],
   });
 });
 
-// Inicia o servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Instagram Embed Service rodando na porta ${PORT}`);
-  console.log(`📖 Documentação disponível em: http://localhost:${PORT}`);
-  console.log(`📚 Swagger UI disponível em: http://localhost:${PORT}/api-docs`);
-  console.log(`❤️  Health check em: http://localhost:${PORT}/health`);
-});
+// Inicia o servidor apenas se não estiver em ambiente serverless
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Instagram Embed Service rodando na porta ${PORT}`);
+    console.log(`📖 Documentação disponível em: http://localhost:${PORT}`);
+    console.log(
+      `📚 Swagger UI disponível em: http://localhost:${PORT}/api-docs`
+    );
+    console.log(`❤️  Health check em: http://localhost:${PORT}/health`);
+  });
+}
 
 module.exports = app;
