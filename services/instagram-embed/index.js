@@ -177,7 +177,8 @@ function extractPostId(url) {
 function generateInstagramEmbed(postId, originalUrl) {
   return `<blockquote class="instagram-media"
   data-instgrm-permalink="${originalUrl}"
-  data-instgrm-version="14">
+  data-instgrm-version="14"
+  style="max-width:540px; min-width:326px; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);">
 </blockquote>`;
 }
 
