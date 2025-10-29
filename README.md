@@ -1,174 +1,153 @@
-# 📦 Conecta Social API
+# 🌱 Conecta Social — API (Backend)
 
-API do projeto Conecta Social, desenvolvida em **NestJS + PostgreSQL** com suporte a **Docker Compose** para facilitar o desenvolvimento e a execução.
-
----
-
-## 🚀 Tecnologias
-
-- [NestJS](https://nestjs.com/)
-- [PostgreSQL](https://www.postgresql.org/)
-- [Prisma ORM](https://www.prisma.io/)
-- [Docker](https://www.docker.com/)
-- [Docker Compose](https://docs.docker.com/compose/)
+> API responsável por gerenciar dados do Conecta Social: eventos, voluntários, famílias e doações.  
+> Desenvolvida para ser leve, testável e escalável.
 
 ---
 
-## ✅ Requisitos
+## 📋 Índice
 
-- Docker e Docker Compose instalados
-- Node.js (opcional para desenvolvimento local sem Docker)
+-  [Sobre o Projeto](#-sobre-o-projeto)
+-  [Funcionalidades Principais](#-funcionalidades-principais)
+-  [Entregas de Sprints (Jira)](#-entregas-de-sprints-jira)
+-  [Tecnologias](#-tecnologias)
+-  [Estrutura do Projeto](#-estrutura-do-projeto)
+-  [Instalação e Execução](#-instalação-e-execução)
+-  [Docker](#-docker)
+-  [Comandos úteis](#-comandos-úteis)
+-  [Links úteis](#-links-úteis)
+-  [Contribuição](#-contribuição)
+-  [Licença](#-licença)
+-  [Contato](#-contato)
 
----
+## 🎯 Sobre o Projeto
 
-## 📁 Setup do Projeto
+O Conecta Social é uma plataforma para apoiar organizações sociais com ferramentas para gerenciamento de voluntariado, eventos, famílias beneficiárias e doações. Esta API fornece os endpoints consumidos pelo frontend e integrações com microserviços (por exemplo: validação e geração de embeds do Instagram).
 
-### 1. Clone o repositório
+## ✨ Funcionalidades Principais
 
+- CRUD de eventos, voluntários, famílias e doações
+- Endpoints públicos para listagem de eventos (próximos, recentes)
+- Paginação e filtros para listagens
+- Integração com microserviços (validação de URLs e geração de embeds)
+- Autenticação via JWT para endpoints protegidos
+- Soft-delete para recursos quando aplicável
+
+## 🚀 Entregas de Sprints (Jira)
+
+Link do Jira: https://blackandyellow.atlassian.net/jira/software/c/projects/CS/boards/37
+
+| Sprint | Período    | Incrementos Desenvolvidos |
+|--------|------------|---------------------------|
+| 1      | 2025.1     | • Finalização do projeto base do 2º semestre • Estruturação inicial da API • Endpoints básicos |
+| 2      | 2025.2     | • Listagens públicas de eventos • Autenticação e autorização • Integração inicial com microserviços |
+| 3      | 2025.2     | • Ajustes e correções • Preparação do ambiente de produção • Deploy da API |
+| 4      | 2025.2     | • Refinamentos finais • Documentação e testes • Preparação da apresentação |
+
+## 🛠 Tecnologias
+
+- NestJS (Framework)
+- TypeScript
+- Prisma ORM
+- PostgreSQL
+- Docker & Docker Compose
+- jest / supertest (testes) — conforme setup do projeto
+- Undici / fetch (chamadas a microserviços)
+
+## 📁 Estrutura do Projeto (resumida)
+
+```
+src/
+├── config/        # configuração (Prisma, env, etc)
+├── modules/       # módulos por domínio (event, volunteer, family, auth...)
+│   ├── event/
+│   └── ...
+├── common/        # middlewares, interceptors, guards, dtos, helpers
+├── main.ts        # bootstrap da aplicação
+└── prisma/        # schema e migrations (quando aplicável)
+```
+
+## 🚀 Instalação e Execução (local)
+
+### Pré-requisitos
+- Node.js 18+
+- Yarn / npm / pnpm
+- Docker (opcional para execução em container)
+- PostgreSQL local ou via Docker
+
+### Instalação
 ```bash
-git clone https://github.com/seu-usuario/conecta-social-api.git
+git clone <repo-url>
 cd conecta-social-api
+yarn install
 ```
 
-### 2. Crie um arquivo `.env`
+### Configurar variáveis de ambiente
+Crie ou edite `.env` com as variáveis necessárias (ex.: DATABASE_URL, JWT_SECRET, INSTAGRAM_SERVICE_URL, PORT).
 
-Você pode usar o modelo `.env.example` (caso exista) ou criar um novo:
-
-```env
-# .env
-DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
-JWT_SECRET=algumasecret
-JWT_EXPIRATION=3600s
-PORT=3001
-
-# Logs/observabilidade
-BETTER_STACK_URL=
-BETTER_STACK_TOKEN=
+### Gerar Prisma e executar migrations
+```bash
+yarn prisma generate
+yarn prisma migrate dev --name init
 ```
 
----
+### Rodar em modo de desenvolvimento
+```bash
+yarn start:dev
+# ou
+yarn run dev
+```
 
-## 🐳 Usando Docker Compose
+## 🐳 Docker
 
-### 🔧 Build e iniciar containers
-
+### Build e iniciar containers
 ```bash
 docker compose up --build
 ```
 
-### ⏹ Parar os containers
-
+### Parar containers
 ```bash
 docker compose down
 ```
 
-### 🔄 Parar e apagar volumes (banco zerado)
-
+### Parar e apagar volumes (reseta banco)
 ```bash
 docker compose down -v
 ```
 
----
-
 ## 🧪 Comandos úteis
 
-### Rodar apenas a API (sem rebuild)
-
-```bash
-docker compose up api
-```
-
-### Rebuild forçado da API (útil após alterações no Dockerfile ou dependências)
-
-```bash
-docker compose up --build api
-```
-
----
-
-## ⚙️ Executando sem Docker (modo local)
-
-Você também pode rodar a API localmente, sem o uso do Docker:
-
-### 1. Instale as dependências
-
-```bash
-yarn install
-```
-
-### 2. Configure o banco de dados local
-
-Certifique-se de que você tenha um PostgreSQL rodando localmente e um arquivo `.env` com as seguintes variáveis:
-
-```env
-DATABASE_URL=postgresql://usuario:senha@localhost:5432/mydb
-JWT_SECRET=algumasecret
-JWT_EXPIRATION=1d
-PORT=3001
-```
-
-### 3. Execute as migrations e o seed (opcional)
-
-```bash
-yarn prisma generate
-yarn prisma migrate deploy
-yarn seed:prod
-```
-
-### 4. Inicie a aplicação
-
-```bash
-yarn run dev
-```
-
-A aplicação será iniciada em modo desenvolvimento na porta definida (ex: `http://localhost:3001`).
-
----
+- Rodar apenas a API:
+  ```bash
+  docker compose up api
+  ```
+- Rebuild forçado da API:
+  ```bash
+  docker compose up --build api
+  ```
+- Executar migrations dentro do container:
+  ```bash
+  docker exec -it <api-container> yarn prisma migrate deploy
+  ```
+- Executar testes:
+  ```bash
+  yarn test
+  ```
 
 ## 🔐 Autenticação
 
-A autenticação usa JWT. As variáveis `JWT_SECRET` e `JWT_EXPIRATION` controlam a geração e validação de tokens.
+A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints protegidos requerem o header Authorization: Bearer <token>.
 
----
+## 🐛 Troubleshooting (comum)
 
-## 🧬 Prisma
+- Erro de conexão com banco: verifique `DATABASE_URL` e se o serviço do DB está acessível (no Docker use o nome do serviço, ex.: `db`).
+- Microserviços de Instagram: verifique `INSTAGRAM_SERVICE_URL` e timeouts (`INSTAGRAM_FETCH_TIMEOUT_MS`).
 
-O script `entrypoint.sh` dentro do container da API executa automaticamente:
+## 🔗 Links úteis
+- Backend (produção): https://conecta-social-api.onrender.com
+- Swagger (API docs): https://conecta-social-api.onrender.com/api/docs
 
-- `prisma generate`
-- `prisma migrate deploy`
-- `yarn seed:prod` (popula dados iniciais)
-
-Se quiser rodar manualmente:
-
-```bash
-docker exec -it nest-api yarn prisma migrate deploy
-docker exec -it nest-api yarn prisma studio
-```
-
----
-
-## 🧩 Estrutura de serviços (Docker Compose)
-
-| Serviço | Porta | Descrição                    |
-|---------|-------|------------------------------|
-| `db`    | 5432  | PostgreSQL                   |
-| `api`   | 3001  | API NestJS em produção       |
-
----
-
-## 🐛 Troubleshooting
-
-### ❌ `Can't reach database server at localhost:5432`
-
-> Provavelmente está usando `localhost` na `DATABASE_URL`.
-
-✅ Solução: use `db` (nome do serviço no docker-compose), por exemplo:  
-`postgresql://postgres:postgres@db:5432/mydb`
-
----
-
-## 🤝 Contribuindo
+## 🤝 Contribuição
 
 1. Fork este repositório
 2. Crie uma branch: `git checkout -b minha-feature`
@@ -176,14 +155,18 @@ docker exec -it nest-api yarn prisma studio
 4. Push para a branch: `git push origin minha-feature`
 5. Abra um Pull Request
 
----
+### Padrões
+- Use TypeScript e siga as regras do ESLint/Prettier do projeto
+- Escreva testes para novas funcionalidades
 
 ## 📄 Licença
 
 Este projeto está licenciado sob a [MIT License](LICENSE).
 
----
-
 ## 💡 Contato
 
-Desenvolvido com 💙 por [Maicon Santos](https://github.com/maiconmaul), [Matheus Tadao](https://github.com/tadaomomiy) e [Nicolas Nagano](https://github.com/Nicolaskn95)
+Desenvolvido por Maicon Santos, Matheus Tadao, Nicolas Nagano e colaboradores.  
+Repositório: (link do seu repositório)
+
+---
+Feito com 💙 para apoiar projetos sociais.
