@@ -16,6 +16,7 @@ services:
       - PORT=${PORT}
       - BETTER_STACK_URL=${BETTER_STACK_URL}
       - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN}
+      - INSTAGRAM_SERVICE_URL=${INSTAGRAM_SERVICE_URL}
     command: yarn start:prod
 
   db:
