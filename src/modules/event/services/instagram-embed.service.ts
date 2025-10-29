@@ -3,7 +3,10 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 @Injectable()
 export class InstagramEmbedService {
   private getBase() {
-    return process.env.INSTAGRAM_SERVICE_URL || 'http://localhost:3008';
+    return (
+      process.env.INSTAGRAM_SERVICE_URL ||
+      'https://conecta-social-api.vercel.app'
+    );
   }
 
   private getTimeoutMs(): number {

@@ -4,7 +4,10 @@ import { InstagramValidationResponse } from '../interfaces/instagram-validation-
 @Injectable()
 export class InstagramValidatorService {
   private getBase() {
-    return process.env.INSTAGRAM_SERVICE_URL || 'http://localhost:3008';
+    return (
+      process.env.INSTAGRAM_SERVICE_URL ||
+      'https://conecta-social-api.vercel.app'
+    );
   }
 
   private getTimeoutMs(): number {
