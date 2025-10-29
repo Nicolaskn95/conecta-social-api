@@ -1,2 +1,7 @@
-// Re-export do serviço instagram-embed
-module.exports = require('../services/instagram-embed/index.js');
+// Import do serviço instagram-embed
+const app = require('../services/instagram-embed/index.js');
+
+// Para Vercel, precisamos exportar como handler
+module.exports = (req, res) => {
+  return app(req, res);
+};
