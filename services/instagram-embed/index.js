@@ -144,56 +144,17 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Swagger JSON with dynamic server based on request host
-app.get('/swagger.json', (req, res) => {
-  const dynamicSpec = {
-    ...swaggerSpec,
-    servers: [
-      {
-        url: `${req.protocol}://${req.get('host')}`,
-        description: 'Servidor detectado',
-      },
-    ],
-  };
-  res.setHeader('Content-Type', 'application/json');
-  res.send(dynamicSpec);
-});
-
-// Servir Swagger UI via CDN (compatível com Vercel) e apontando para o JSON dinâmico
-const getSwaggerHtml = (basePath = '') => `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>API Docs</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
-    <style>body{margin:0;} #swagger-ui{max-width: 1200px; margin: 0 auto;}</style>
-  </head>
-  <body>
-    <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
-    <script>
-      window.addEventListener('load', () => {
-        window.ui = SwaggerUIBundle({
-          url: '${basePath}/swagger.json',
-          dom_id: '#swagger-ui',
-          deepLinking: true,
-          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-          layout: 'StandaloneLayout'
-        });
-      });
-    </script>
-  </body>
-</html>`;
-
-app.get('/api-docs', (req, res) => {
-  res.type('html').send(getSwaggerHtml(''));
-});
-
-app.get('/api-docs/', (req, res) => {
-  res.type('html').send(getSwaggerHtml('..'));
-});
+// Serve assets + UI a partir do spec em memória (evita 404/MIME errado na Vercel)
+app.use(
+  '/api-docs',
+  (req, _res, next) => {
+    // opcional dinâmico:
+    swaggerSpec.servers = [{ url: `${req.protocol}://${req.get('host')}` }];
+    next();
+  },
+  swaggerUi.serveFiles(swaggerSpec),
+  swaggerUi.setup(swaggerSpec, { explorer: true })
+);
 
 /**
  * Extrai o POST_ID de um link do Instagram
@@ -559,3 +520,11 @@ if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
 }
 
 module.exports = app;
+
+// Só escuta porta quando rodar via `node index.js` (dev local)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Dev local em http://localhost:${PORT}`);
+    console.log(`📚 Swagger UI: http://localhost:${PORT}/api-docs`);
+  });
+}
