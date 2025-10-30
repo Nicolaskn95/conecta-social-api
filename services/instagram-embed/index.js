@@ -20,10 +20,11 @@ const swaggerOptions = {
         email: 'support@example.com',
       },
     },
+    // Use relative server URL to work both locally and remotely
     servers: [
       {
-        url: `http://localhost:${PORT}`,
-        description: 'Servidor de desenvolvimento',
+        url: '/',
+        description: 'Servidor atual',
       },
     ],
     components: {
@@ -143,8 +144,27 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Configurar Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Swagger JSON with dynamic server based on request host
+app.get('/swagger.json', (req, res) => {
+  const dynamicSpec = {
+    ...swaggerSpec,
+    servers: [
+      {
+        url: `${req.protocol}://${req.get('host')}`,
+        description: 'Servidor detectado',
+      },
+    ],
+  };
+  res.setHeader('Content-Type', 'application/json');
+  res.send(dynamicSpec);
+});
+
+// Configurar Swagger UI apontando para o JSON dinâmico
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(undefined, { swaggerOptions: { url: '/swagger.json' } })
+);
 
 /**
  * Extrai o POST_ID de um link do Instagram
