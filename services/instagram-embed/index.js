@@ -508,23 +508,15 @@ app.use((req, res) => {
 });
 
 // Inicia o servidor apenas se não estiver em ambiente serverless
-if (process.env.NODE_ENV !== 'production' || process.env.VERCEL !== '1') {
-  app.listen(PORT, () => {
-    console.log(`🚀 Instagram Embed Service rodando na porta ${PORT}`);
-    console.log(`📖 Documentação disponível em: http://localhost:${PORT}`);
-    console.log(
-      `📚 Swagger UI disponível em: http://localhost:${PORT}/api-docs`
-    );
-    console.log(`❤️  Health check em: http://localhost:${PORT}/health`);
-  });
-}
-
+// ---------------------------------------------------------------------------
+// Exporta o app para a Vercel (serverless)
 module.exports = app;
 
-// Só escuta porta quando rodar via `node index.js` (dev local)
+// Executa o servidor somente em ambiente local (npx vercel dev / node index.js)
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`🚀 Dev local em http://localhost:${PORT}`);
     console.log(`📚 Swagger UI: http://localhost:${PORT}/api-docs`);
+    console.log(`❤️  Health check em: http://localhost:${PORT}/health`);
   });
 }
