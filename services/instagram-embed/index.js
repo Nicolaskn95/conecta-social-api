@@ -1,6 +1,7 @@
 const express = require('express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const swaggerUiDist = require('swagger-ui-dist');
 const app = express();
 const PORT = process.env.PORT || 3008;
 
@@ -144,11 +145,16 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Serve assets + UI a partir do spec em memória (evita 404/MIME errado na Vercel)
+// Caminho absoluto dos assets (css/js) do swagger-ui
+const swaggerAssets = swaggerUiDist.getAbsoluteFSPath();
+
+// 1) Sirva os assets de forma explícita
+app.use('/api-docs', express.static(swaggerAssets));
+
+// 2) Ajuste dinâmico do "servers" (opcional) e monte o UI
 app.use(
-  '/api-docs',
+  '/api-docs/',
   (req, _res, next) => {
-    // opcional dinâmico:
     swaggerSpec.servers = [{ url: `${req.protocol}://${req.get('host')}` }];
     next();
   },
