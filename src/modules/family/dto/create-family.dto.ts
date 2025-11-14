@@ -22,10 +22,6 @@ export class CreateFamilyDto {
   @IsString()
   city: string;
 
-  @ApiProperty({ description: 'UF' })
-  @IsString()
-  uf: string;
-
   @ApiProperty({ description: 'Estado' })
   @IsString()
   state: string;
