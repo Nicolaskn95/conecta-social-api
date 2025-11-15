@@ -13,6 +13,12 @@ enum EmployeeRole {
   VOLUNTEER
 }
 
+enum EventStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
 model Employee {
   id           String   @id @default(uuid())
   name         String   @db.VarChar(30)
@@ -50,7 +56,7 @@ model Event {
   greeting_description String?  @db.VarChar(1000)
   attendance           Int?
   embedded_instagram   String?  @db.Text
-  status               String   @db.VarChar(20)
+  status               EventStatus @default(SCHEDULED)
 
   street               String   @db.VarChar(100)
   neighborhood         String   @db.VarChar(30)
@@ -97,6 +103,7 @@ model Family {
 
   @@map("families")
 }
+
 model Category {
   id             String    @id @default(uuid())
   name           String    @db.VarChar(25)

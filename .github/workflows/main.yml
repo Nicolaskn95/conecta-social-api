@@ -25,6 +25,12 @@ jobs:
       - name: Instalar dependências
         run: yarn
 
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Validar schema do Prisma
+        run: npx prisma validate
+
       - name: Build da aplicação
         run: yarn build
 
@@ -55,8 +61,27 @@ jobs:
       - name: Instalar dependências
         run: yarn
 
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Validar schema do Prisma
+        run: npx prisma validate
+
       - name: Build da aplicação
         run: yarn build
+
+      - name: Aplicar migrations do Prisma
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "📦 Aplicando migrations do Prisma no banco de produção..."
+          npx prisma migrate deploy || {
+            echo "⚠️ Aviso: Falha ao aplicar migrations. Verifique se há migrations pendentes ou falhadas."
+            echo "Execute 'npx prisma migrate resolve' manualmente se necessário."
+            exit 0
+          }
+          echo "✅ Migrations aplicadas com sucesso!"
 
       - name: Criar nova tag caso não exista
         env:
