@@ -1,56 +1,39 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { UpdateFamilyDto } from './dto/update-family.dto';
+import { FamilyRepositoryImpl } from './repositories/family.repository.impl';
 
 @Injectable()
 export class FamilyService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private familyRepository: FamilyRepositoryImpl) {}
 
   create(dto: CreateFamilyDto) {
-    return this.prisma.family.create({
-      data: {
-        ...dto,
-        active: dto.active ?? true,
-      },
-    });
+    return this.familyRepository.create(dto);
   }
 
   findAll() {
-    return this.prisma.family.findMany();
+    return this.familyRepository.findAll();
   }
 
   findAllActives() {
-    return this.prisma.family.findMany({
-      where: { active: true },
-    });
+    return this.familyRepository.findAllActives();
   }
 
   async findOne(id: string) {
-    const family = await this.prisma.family.findUnique({ where: { id } });
-
+    const family = await this.familyRepository.findById(id);
     if (!family) {
       throw new NotFoundException('Família não encontrada');
     }
-
     return family;
   }
 
   async update(id: string, dto: UpdateFamilyDto) {
     await this.findOne(id);
-
-    return this.prisma.family.update({
-      where: { id },
-      data: dto,
-    });
+    return this.familyRepository.update(id, dto);
   }
 
   async remove(id: string) {
     await this.findOne(id);
-
-    return this.prisma.family.update({
-      where: { id },
-      data: { active: false },
-    });
+    return this.familyRepository.softDelete(id);
   }
 }

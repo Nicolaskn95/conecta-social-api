@@ -47,8 +47,8 @@ export class EventService {
     });
   }
 
-  findOne(id: string) {
-    const event = this.prisma.event.findUnique({ where: { id } });
+  async findOne(id: string) {
+    const event = await this.prisma.event.findUnique({ where: { id } });
 
     if (!event) {
       throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
@@ -127,14 +127,11 @@ export class EventService {
       const events = await this.fetchRecentWithInstagramLinks(limit);
       const urls = this.extractUrls(events);
 
-      // se não há urls, retorna eventos (defensivo)
       if (urls.length === 0) return events;
 
       const embeds = await this.instagramEmbedService.generateEmbeds(urls);
       return this.mergeEmbedsWithEvents(events, embeds);
     } catch (err) {
-      console.error('Erro ao gerar embeds para eventos recentes:', err);
-      // mantém comportamento consistente: propaga BadRequest para problemas com microserviço
       throw err instanceof BadRequestException
         ? err
         : new BadRequestException('Não foi possível obter embeds do Instagram');
@@ -180,7 +177,6 @@ export class EventService {
   }
 
   async findAllPaginated(page = 1, size = 10) {
-    console.log('📍 Iniciando findAllPaginated:', { page, size });
     const skip = (page - 1) * size;
 
     try {
@@ -206,10 +202,8 @@ export class EventService {
         list: events,
       };
 
-      console.log('📍 Resposta montada:', response);
       return response;
     } catch (error) {
-      console.error('❌ Erro em findAllPaginated:', error);
       throw error;
     }
   }

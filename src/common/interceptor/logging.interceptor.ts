@@ -23,8 +23,7 @@ export class LoggingInterceptor implements NestInterceptor {
         this.logger.log(
           `[${method}] ${originalUrl} - ${duration}ms`,
           'HTTP',
-          body,
-          response
+          this.sanitize(body)
         );
       }),
       catchError((err) => {
@@ -33,11 +32,21 @@ export class LoggingInterceptor implements NestInterceptor {
           `[${method}] ${originalUrl} - ${duration}ms - ${err.message}`,
           err.stack,
           'HTTP',
-          body,
-          err.response
+          this.sanitize(body)
         );
         throw err;
       })
     );
+  }
+
+  private sanitize(payload: any) {
+    if (!payload || typeof payload !== 'object') return payload;
+    const redacted = { ...payload };
+    Object.keys(redacted).forEach((key) => {
+      if (/password|senha|token|authorization/i.test(key)) {
+        redacted[key] = '[REDACTED]';
+      }
+    });
+    return redacted;
   }
 }

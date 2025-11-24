@@ -38,16 +38,18 @@ export class EmployeeController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  @ApiOperation({ summary: 'Listar todos os funcionários' })
-  findAll() {
-    return this.employeeService.findAll();
+  @ApiOperation({ summary: 'Listar funcionários ativos' })
+  @ApiResponse({ status: 200, description: 'Lista de funcionários ativos' })
+  findAllActives() {
+    return this.employeeService.findAllActives();
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('actives')
-  @ApiOperation({ summary: 'Listar funcionários ativos' })
-  findAllActives() {
-    return this.employeeService.findAllActives();
+  @Get('all')
+  @ApiOperation({ summary: 'Listar todos os funcionários' })
+  @ApiResponse({ status: 200, description: 'Lista de funcionários' })
+  findAll() {
+    return this.employeeService.findAll();
   }
 
   @UseGuards(JwtAuthGuard)

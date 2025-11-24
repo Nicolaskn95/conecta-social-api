@@ -36,19 +36,19 @@ export class FamilyController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Get()
-  @ApiOperation({ summary: 'Listar todas as famílias' })
-  @ApiResponse({ status: 200, description: 'Lista de famílias' })
-  findAll() {
-    return this.familyService.findAll();
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @Get('actives')
   @ApiOperation({ summary: 'Listar famílias ativas' })
   @ApiResponse({ status: 200, description: 'Lista de famílias ativas' })
   findAllActives() {
     return this.familyService.findAllActives();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('all')
+  @ApiOperation({ summary: 'Listar todas as famílias' })
+  @ApiResponse({ status: 200, description: 'Lista de famílias' })
+  findAll() {
+    return this.familyService.findAll();
   }
 
   @UseGuards(JwtAuthGuard)

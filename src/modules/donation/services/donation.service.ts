@@ -24,6 +24,10 @@ export class DonationService {
     return this.donationRepository.findAll();
   }
 
+  async findAllActives() {
+    return this.donationRepository.findAllActives();
+  }
+
   async findById(id: string) {
     const donation = await this.donationRepository.findById(id);
     if (!donation) {

@@ -28,6 +28,15 @@ export class DonationRepository {
     });
   }
 
+  async findAllActives() {
+    return this.prisma.donation.findMany({
+      where: { active: true },
+      include: {
+        category: true,
+      },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.donation.findFirst({
       where: { id, active: true },
