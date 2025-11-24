@@ -63,19 +63,19 @@ export class EventController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Get()
-  @ApiOperation({ summary: 'Listar todos os eventos (admin)' })
-  @ApiResponse({ status: 200, description: 'Lista de eventos (admin)' })
-  async findAll() {
-    return this.eventService.findAll();
+  @ApiOperation({ summary: 'Listar todos os eventos ativos' })
+  @ApiResponse({ status: 200, description: 'Eventos ativos' })
+  async findAllActives() {
+    return this.eventService.findAllActives();
   }
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @Get('actives')
-  @ApiOperation({ summary: 'Listar todos os eventos ativos' })
-  @ApiResponse({ status: 200, description: 'Eventos ativos (admin)' })
-  findAllActives() {
-    return this.eventService.findAllActives();
+  @Get('all')
+  @ApiOperation({ summary: 'Listar todos os eventos' })
+  @ApiResponse({ status: 200, description: 'Lista de eventos' })
+  findAll() {
+    return this.eventService.findAll();
   }
 
   @UseGuards(JwtAuthGuard)
@@ -101,7 +101,7 @@ export class EventController {
     @Query('size') size?: string
   ) {
     console.log('📍 Controller - findAllPaginated chamado:', { page, size });
-    const pageNumber = page ? parseInt(page, 10) : 1; // Ajustado para começar em 1
+    const pageNumber = page ? parseInt(page, 10) : 1;
     const pageSize = size ? parseInt(size, 10) : 10;
     return this.eventService.findAllPaginated(pageNumber, pageSize);
   }

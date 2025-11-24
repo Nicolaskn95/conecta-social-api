@@ -34,7 +34,15 @@ export class DonationController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar todas as doações ativas' })
+  @ApiResponse({ status: 200, description: 'Lista de doações ativas' })
+  findAllActives() {
+    return this.donationService.findAllActives();
+  }
+
+  @Get('all')
   @ApiOperation({ summary: 'Listar todas as doações' })
+  @ApiResponse({ status: 200, description: 'Lista de doações' })
   findAll() {
     return this.donationService.findAll();
   }

@@ -13,7 +13,7 @@ export class LoggerService implements NestLoggerService {
     response?: string
   ) {
     this.logger.info({ message, context });
-    await this.sendToBetterStack(
+    void this.sendToBetterStack(
       'info',
       message,
       context,
@@ -31,7 +31,7 @@ export class LoggerService implements NestLoggerService {
     response?: string
   ) {
     this.logger.error({ message, trace, context });
-    await this.sendToBetterStack(
+    void this.sendToBetterStack(
       'error',
       message,
       context,
@@ -43,7 +43,7 @@ export class LoggerService implements NestLoggerService {
 
   async warn(message: string, context?: string) {
     this.logger.warn({ message, context });
-    await this.sendToBetterStack('warn', message, context);
+    void this.sendToBetterStack('warn', message, context);
   }
 
   private async sendToBetterStack(
