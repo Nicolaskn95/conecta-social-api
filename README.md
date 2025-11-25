@@ -43,6 +43,7 @@ Link do Jira: https://blackandyellow.atlassian.net/jira/software/c/projects/CS/b
 | 2      | 2025.2     | • Listagens públicas de eventos • Autenticação e autorização • Integração inicial com microserviços |
 | 3      | 2025.2     | • Ajustes e correções • Preparação do ambiente de produção • Deploy da API |
 | 4      | 2025.2     | • Refinamentos finais • Documentação e testes • Preparação da apresentação |
+| 5      | 2025.2     | • Ajustes finais • Testes unitários • Preparação da segunda apresentação |
 
 ## 🛠 Tecnologias
 
@@ -148,6 +149,33 @@ A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints pr
 - Swagger (API docs): https://conecta-social-api.onrender.com/api/docs
 - Frontend (produção): https://conecta-social-fatec.vercel.app/
 - Repositório frontend: https://github.com/Nicolaskn95/conecta-social-web
+- Documentação completa do projeto: https://docs.google.com/document/d/1b2XceqbDNY6t0D4t--pnbQzrkYjZE238jI3S_xjG8rs/edit?usp=sharing
+
+## 📑 Requisitos funcionais
+
+
+| Código | Descrição |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| RF01   | CADASTRO DE VOLUNTÁRIOS: o administrador do sistema deverá ter a possibilidade de cadastrar outros usuários no sistema.                                                |
+| RF02   | O administrador deve ser cadastrado pelo time técnico no momento da entrega do software, pois não terá área pública de cadastro.                                       |
+| RF03   | GESTÃO DE DOAÇÕES: área para registrar e acompanhar doações recebidas e alocar recursos conforme necessário.                                                            |
+| RF04   | GESTÃO DE EVENTOS: área para registrar, alterar, vincular doações e acompanhar eventos; na área não logada serão exibidos últimos eventos e próximos eventos do calendário. |
+| RF05   | GESTÃO DE FAMÍLIAS: área para registrar, alterar e visualizar as famílias para agrupar e vincular as pessoas ajudadas.                                                  |
+| RF06   | ÁREA NÃO LOGADA: usuários sem login devem conseguir visualizar próximos eventos e a história do projeto social.                                                         |
+
+## 🛡 Requisitos não funcionais
+
+
+| Código | Descrição |
+|--------|------------------------------------------------------------------------------------------------------------------------------------|
+| RNF01  | A interface deverá ter layout responsivo e navegação intuitiva.                                                                   |
+| RNF02  | Login com e-mail/senha; senhas criptografadas com bcrypt e JWT Passport.                                                          |
+| RNF03  | O sistema deve processar pelo menos 10 requisições por minuto.                                                                    |
+| RNF04  | O sistema deverá ter alta disponibilidade (99% do tempo).                                                                         |
+| RNF05  | O sistema deverá seguir a Lei Geral de Proteção de Dados (LGPD).                                                                  |
+| RNF06  | O produto deve ser web responsivo.                                                                                                |
+| RNF07  | O sistema deverá se comunicar com o banco de dados PostgreSQL.                                                                   |
+| RNF08  | O sistema deverá ser desenvolvido utilizando a linguagem Javascript.                                                              |
 
 ## 🤝 Contribuição
 
@@ -175,11 +203,12 @@ Este projeto está licenciado sob a [MIT License](LICENSE).
 
 > Nicolas Katsuji Nagano ([GitHub](github.com/Nicolaskn95))
 
+> Matheus Tadao Momiy
+
 > Caio Fernando Scudeler
 
 > Nicollas Mencacci Pereira
 
-> Matheus Tadao Momiy
 
 ---
 
