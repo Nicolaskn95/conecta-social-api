@@ -40,4 +40,17 @@ export class FamilyRepositoryImpl implements FamilyRepository {
       data: { active: false },
     });
   }
+
+  findPaginated(skip: number, take: number): Promise<Family[]> {
+    return this.prisma.family.findMany({
+      where: { active: true },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take,
+    });
+  }
+
+  countActives(): Promise<number> {
+    return this.prisma.family.count({ where: { active: true } });
+  }
 }

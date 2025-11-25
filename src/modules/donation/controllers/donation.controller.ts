@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -38,6 +39,31 @@ export class DonationController {
   @ApiResponse({ status: 200, description: 'Lista de doações ativas' })
   findAllActives() {
     return this.donationService.findAllActives();
+  }
+
+  @Get('paginated')
+  @ApiOperation({ summary: 'Listar doações com paginação' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de doações ativas',
+    schema: {
+      example: {
+        page: 1,
+        next_page: 2,
+        is_last_page: false,
+        previous_page: 1,
+        total_pages: 5,
+        list: [],
+      },
+    },
+  })
+  findAllPaginated(
+    @Query('page') page?: string,
+    @Query('size') size?: string
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const pageSize = size ? parseInt(size, 10) : 10;
+    return this.donationService.findAllPaginated(pageNumber, pageSize);
   }
 
   @Get('all')

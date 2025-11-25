@@ -9,4 +9,6 @@ export interface FamilyRepository {
   findById(id: string): Promise<Family | null>;
   update(id: string, data: UpdateFamilyDto): Promise<Family>;
   softDelete(id: string): Promise<Family>;
+  findPaginated(skip: number, take: number): Promise<Family[]>;
+  countActives(): Promise<number>;
 }

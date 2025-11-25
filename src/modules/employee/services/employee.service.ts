@@ -34,6 +34,27 @@ export class EmployeeService {
     return this.repository.findAllActives();
   }
 
+  async findAllPaginated(page = 1, size = 10) {
+    const skip = (page - 1) * size;
+
+    const [employees, total] = await Promise.all([
+      this.repository.findPaginated(skip, size),
+      this.repository.countActives(),
+    ]);
+
+    const totalPages = Math.ceil(total / size);
+    const isLastPage = page >= totalPages;
+
+    return {
+      page,
+      next_page: isLastPage ? page : page + 1,
+      is_last_page: isLastPage,
+      previous_page: page > 1 ? page - 1 : 1,
+      total_pages: totalPages,
+      list: employees,
+    };
+  }
+
   async findOne(id: string) {
     const employee = await this.repository.findById(id);
     if (!employee) {

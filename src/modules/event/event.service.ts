@@ -78,8 +78,9 @@ export class EventService {
     });
   }
 
-  async getUpcomingEvents(limit: number) {
+  async getUpcomingEvents(limit?: number) {
     const today = new Date();
+    const take = limit && limit > 0 ? limit : undefined;
     const events = await this.prisma.event.findMany({
       where: {
         date: {
@@ -90,7 +91,7 @@ export class EventService {
       orderBy: {
         date: 'asc',
       },
-      take: limit,
+      ...(take ? { take } : {}),
     });
 
     if (events.length === 0) {

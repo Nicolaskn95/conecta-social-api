@@ -7,6 +7,7 @@ import {
   Put,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { EmployeeService } from '../services/employee.service';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
@@ -42,6 +43,32 @@ export class EmployeeController {
   @ApiResponse({ status: 200, description: 'Lista de funcionários ativos' })
   findAllActives() {
     return this.employeeService.findAllActives();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('paginated')
+  @ApiOperation({ summary: 'Listar funcionários com paginação' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de funcionários',
+    schema: {
+      example: {
+        page: 1,
+        next_page: 2,
+        is_last_page: false,
+        previous_page: 1,
+        total_pages: 5,
+        list: [],
+      },
+    },
+  })
+  findAllPaginated(
+    @Query('page') page?: string,
+    @Query('size') size?: string
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const pageSize = size ? parseInt(size, 10) : 10;
+    return this.employeeService.findAllPaginated(pageNumber, pageSize);
   }
 
   @UseGuards(JwtAuthGuard)
