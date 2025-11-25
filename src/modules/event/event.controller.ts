@@ -30,7 +30,8 @@ export class EventController {
   @ApiOperation({ summary: 'Listar próximos eventos' })
   @ApiResponse({ status: 200, description: 'Lista de eventos futuros' })
   getUpcomingEvents(@Query('limit') limit?: string) {
-    const take = limit ? parseInt(limit, 10) : 5;
+    const parsed = limit ? parseInt(limit, 10) : undefined;
+    const take = Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
     return this.eventService.getUpcomingEvents(take);
   }
 

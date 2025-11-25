@@ -62,4 +62,18 @@ export class DonationRepository {
       data: { active: false },
     });
   }
+
+  async findPaginated(skip: number, take: number) {
+    return this.prisma.donation.findMany({
+      where: { active: true },
+      orderBy: { created_at: 'desc' },
+      include: { category: true },
+      skip,
+      take,
+    });
+  }
+
+  async countActives() {
+    return this.prisma.donation.count({ where: { active: true } });
+  }
 }

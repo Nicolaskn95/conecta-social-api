@@ -51,4 +51,17 @@ export class EmployeeRepositoryImpl implements EmployeeRepository {
       data: { active: false },
     });
   }
+
+  findPaginated(skip: number, take: number): Promise<Employee[]> {
+    return this.prisma.employee.findMany({
+      where: { active: true },
+      orderBy: { created_at: 'desc' },
+      skip,
+      take,
+    });
+  }
+
+  countActives(): Promise<number> {
+    return this.prisma.employee.count({ where: { active: true } });
+  }
 }

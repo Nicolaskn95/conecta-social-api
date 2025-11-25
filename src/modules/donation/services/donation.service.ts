@@ -28,6 +28,27 @@ export class DonationService {
     return this.donationRepository.findAllActives();
   }
 
+  async findAllPaginated(page = 1, size = 10) {
+    const skip = (page - 1) * size;
+
+    const [donations, total] = await Promise.all([
+      this.donationRepository.findPaginated(skip, size),
+      this.donationRepository.countActives(),
+    ]);
+
+    const totalPages = Math.ceil(total / size);
+    const isLastPage = page >= totalPages;
+
+    return {
+      page,
+      next_page: isLastPage ? page : page + 1,
+      is_last_page: isLastPage,
+      previous_page: page > 1 ? page - 1 : 1,
+      total_pages: totalPages,
+      list: donations,
+    };
+  }
+
   async findById(id: string) {
     const donation = await this.donationRepository.findById(id);
     if (!donation) {

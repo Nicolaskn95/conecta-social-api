@@ -11,4 +11,6 @@ export interface EmployeeRepository {
   findByCpf(cpf: string): Promise<Employee | null>;
   update(id: string, data: UpdateEmployeeDto): Promise<Employee>;
   softDelete(id: string): Promise<Employee>;
+  findPaginated(skip: number, take: number): Promise<Employee[]>;
+  countActives(): Promise<number>;
 }
