@@ -9,6 +9,16 @@ export class InstagramEmbedService {
     );
   }
 
+  private getApiKey() {
+    const key = process.env.INSTAGRAM_SERVICE_API_KEY;
+    if (!key) {
+      throw new BadRequestException(
+        'Serviço do Instagram não configurado (API key ausente)'
+      );
+    }
+    return key;
+  }
+
   private getTimeoutMs(): number {
     const v = parseInt(process.env.INSTAGRAM_FETCH_TIMEOUT_MS ?? '', 10);
     return Number.isFinite(v) && v > 0 ? v : 5000;
@@ -28,6 +38,7 @@ export class InstagramEmbedService {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          'x-api-key': this.getApiKey(),
         },
         body: JSON.stringify({ urls }),
         signal: controller.signal,
