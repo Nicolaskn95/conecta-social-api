@@ -1,12 +1,45 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const swaggerUiDist = require('swagger-ui-dist');
+
+// Carrega .env local se existir (simples, sem dependência externa)
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const lines = fs.readFileSync(envPath, 'utf-8').split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^\s*([^#=\s]+)\s*=\s*(.+)\s*$/);
+    if (match && !(match[1] in process.env)) {
+      process.env[match[1]] = match[2];
+    }
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3008;
+let API_KEY = process.env.INSTAGRAM_SERVICE_API_KEY;
 
 // Middleware para parsing JSON
 app.use(express.json());
+
+// Middleware simples de autenticação por API Key
+function requireApiKey(req, res, next) {
+  if (!API_KEY && process.env.INSTAGRAM_SERVICE_API_KEY) {
+    API_KEY = process.env.INSTAGRAM_SERVICE_API_KEY;
+  }
+
+  if (!API_KEY) {
+    console.warn('INSTAGRAM_SERVICE_API_KEY não configurada; bloqueando requisição.');
+    return res.status(500).json({ error: 'Chave de API não configurada' });
+  }
+
+  const key = req.headers['x-api-key'];
+  if (!key || key !== API_KEY) {
+    return res.status(401).json({ error: 'API key inválida ou ausente' });
+  }
+  next();
+}
 
 // Configuração do Swagger
 const swaggerOptions = {
@@ -28,7 +61,21 @@ const swaggerOptions = {
         description: 'Servidor atual',
       },
     ],
+    security: [
+      {
+        ApiKeyAuth: [],
+      },
+    ],
     components: {
+      securitySchemes: {
+        ApiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-api-key',
+          description:
+            'Chave de API necessária para acessar os endpoints protegidos.',
+        },
+      },
       schemas: {
         GenerateEmbedsRequest: {
           type: 'object',
@@ -140,26 +187,19 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ['./index.js'],
+  apis: [`${__dirname}/index.js`],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Caminho absoluto dos assets (css/js) do swagger-ui
-const swaggerAssets = swaggerUiDist.getAbsoluteFSPath();
-
-// 1) Sirva os assets de forma explícita
-app.use('/api-docs', express.static(swaggerAssets));
-
-// 2) Ajuste dinâmico do "servers" (opcional) e monte o UI
+// Documentação Swagger em /api-docs
 app.use(
-  '/api-docs/',
-  (req, _res, next) => {
+  '/api-docs',
+  swaggerUi.serve,
+  (req, res, next) => {
     swaggerSpec.servers = [{ url: `${req.protocol}://${req.get('host')}` }];
-    next();
-  },
-  swaggerUi.serveFiles(swaggerSpec),
-  swaggerUi.setup(swaggerSpec, { explorer: true })
+    return swaggerUi.setup(swaggerSpec, { explorer: true })(req, res, next);
+  }
 );
 
 /**
@@ -242,6 +282,8 @@ function processInstagramUrls(urls) {
  *                 urls:
  *                   - "https://www.instagram.com/p/ABC123/"
  *                   - "https://www.instagram.com/p/DEF456/"
+ *     security:
+ *       - ApiKeyAuth: []
  *     responses:
  *       200:
  *         description: Embeds gerados com sucesso
@@ -272,7 +314,7 @@ function processInstagramUrls(urls) {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-app.post('/generate-embeds', (req, res) => {
+app.post('/generate-embeds', requireApiKey, (req, res) => {
   try {
     const { urls } = req.body;
 
@@ -329,6 +371,8 @@ app.post('/generate-embeds', (req, res) => {
  *               summary: URL inválida
  *               value:
  *                 url: "https://invalid-url.com"
+ *     security:
+ *       - ApiKeyAuth: []
  *     responses:
  *       200:
  *         description: Validação realizada com sucesso
@@ -366,7 +410,7 @@ app.post('/generate-embeds', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-app.post('/validate-url', (req, res) => {
+app.post('/validate-url', requireApiKey, (req, res) => {
   try {
     const { url } = req.body;
 

@@ -126,6 +126,8 @@ export class EventService {
   async getRecentEventsWithInstagramEmbeds(limit = 5) {
     try {
       const events = await this.fetchRecentWithInstagramLinks(limit);
+      if (!events.length) return [];
+
       const urls = this.extractUrls(events);
 
       if (urls.length === 0) return events;
@@ -133,9 +135,9 @@ export class EventService {
       const embeds = await this.instagramEmbedService.generateEmbeds(urls);
       return this.mergeEmbedsWithEvents(events, embeds);
     } catch (err) {
-      throw err instanceof BadRequestException
-        ? err
-        : new BadRequestException('Não foi possível obter embeds do Instagram');
+      if (err instanceof BadRequestException) throw err;
+      if (err instanceof NotFoundException) return [];
+      throw new BadRequestException('Não foi possível obter embeds do Instagram');
     }
   }
 
@@ -152,11 +154,7 @@ export class EventService {
       take: limit,
     });
 
-    if (!events || events.length === 0) {
-      throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
-    }
-
-    return events;
+    return events ?? [];
   }
 
   private extractUrls(events: any[]): string[] {
