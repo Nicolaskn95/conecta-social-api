@@ -8,6 +8,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { FamilyModule } from './modules/family/family.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DonationModule } from './modules/donation/donation.module';
+import { ResourcesModule } from './modules/resources/resources.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { DonationModule } from './modules/donation/donation.module';
     FamilyModule,
     CategoryModule,
     DonationModule,
+    ResourcesModule,
   ],
   controllers: [AppController],
   providers: [],
