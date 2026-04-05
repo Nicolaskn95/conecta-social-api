@@ -84,7 +84,7 @@ yarn install
 ```
 
 ### Configurar variáveis de ambiente
-Crie ou edite `.env` com as variáveis necessárias (ex.: DATABASE_URL, JWT_SECRET, INSTAGRAM_SERVICE_URL, PORT).
+Crie ou edite `.env` com as variáveis necessárias (ex.: DATABASE_URL, JWT_SECRET, JWT_EXPIRATION, PORT).
 
 ### Gerar Prisma e executar migrations
 ```bash
@@ -142,7 +142,7 @@ A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints pr
 ## 🐛 Troubleshooting (comum)
 
 - Erro de conexão com banco: verifique `DATABASE_URL` e se o serviço do DB está acessível (no Docker use o nome do serviço, ex.: `db`).
-- Microserviços de Instagram: verifique `INSTAGRAM_SERVICE_URL` e timeouts (`INSTAGRAM_FETCH_TIMEOUT_MS`).
+- Embeds de Instagram: a validação e a geração do HTML acontecem internamente no módulo de eventos. Se houver falha, valide o formato da URL do post em `embedded_instagram`.
 
 ## 🔗 Links úteis
 - Backend (produção): https://conecta-social-api.onrender.com

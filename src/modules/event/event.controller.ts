@@ -19,6 +19,9 @@ import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorator/roles.decorator';
+import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 
 @ApiTags('Events')
 @Controller('events')
@@ -52,11 +55,16 @@ export class EventController {
   }
 
   // 🔐 Protected endpoints
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Post()
   @ApiOperation({ summary: 'Criar novo evento' })
   @ApiResponse({ status: 201, description: 'Evento criado com sucesso' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
   create(@Body() dto: CreateEventDto) {
     return this.eventService.create(dto);
   }
@@ -127,11 +135,16 @@ export class EventController {
     return this.eventService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Delete(':id')
   @ApiOperation({ summary: 'Desativar (soft delete) um evento' })
   @ApiResponse({ status: 200, description: 'Evento desativado com sucesso' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
   @ApiResponse({ status: 404, description: 'Evento não encontrado' })
   remove(@Param('id') id: string) {
     return this.eventService.remove(id);

@@ -1,8 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { EventService } from './event.service';
 import { PrismaService } from '@/config/prisma/prisma.service';
-import { InstagramValidatorService } from './services/instagram-validator.service';
-import { InstagramEmbedService } from './services/instagram-embed.service';
+import { InstagramContentService } from './services/instagram-content.service';
 
 describe('EventService', () => {
   let prisma: {
@@ -14,8 +13,10 @@ describe('EventService', () => {
       count: jest.Mock;
     };
   };
-  let instagramValidator: { validate: jest.Mock };
-  let instagramEmbedService: { generateEmbeds: jest.Mock };
+  let instagramContentService: {
+    validateUrl: jest.Mock;
+    generateEmbeds: jest.Mock;
+  };
   let service: EventService;
 
   beforeEach(() => {
@@ -28,13 +29,14 @@ describe('EventService', () => {
         count: jest.fn(),
       },
     };
-    instagramValidator = { validate: jest.fn() };
-    instagramEmbedService = { generateEmbeds: jest.fn() };
+    instagramContentService = {
+      validateUrl: jest.fn(),
+      generateEmbeds: jest.fn(),
+    };
 
     service = new EventService(
       prisma as unknown as PrismaService,
-      instagramValidator as unknown as InstagramValidatorService,
-      instagramEmbedService as unknown as InstagramEmbedService
+      instagramContentService as unknown as InstagramContentService
     );
   });
 
@@ -52,12 +54,16 @@ describe('EventService', () => {
       embedded_instagram: 'https://insta/abc',
     };
 
-    instagramValidator.validate.mockResolvedValue('https://insta/abc-normalized');
+    instagramContentService.validateUrl.mockReturnValue(
+      'https://insta/abc-normalized'
+    );
     prisma.event.create.mockResolvedValue({ id: '1', ...dto });
 
     const result = await service.create(dto as any);
 
-    expect(instagramValidator.validate).toHaveBeenCalledWith('https://insta/abc');
+    expect(instagramContentService.validateUrl).toHaveBeenCalledWith(
+      'https://insta/abc'
+    );
     expect(prisma.event.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         embedded_instagram: 'https://insta/abc-normalized',
@@ -80,14 +86,17 @@ describe('EventService', () => {
       { id: '1', embedded_instagram: 'url1', active: true },
       { id: '2', embedded_instagram: 'url2', active: true },
     ]);
-    instagramEmbedService.generateEmbeds.mockResolvedValue([
+    instagramContentService.generateEmbeds.mockReturnValue([
       '<embed1>',
       '<embed2>',
     ]);
 
     const events = await service.getRecentEventsWithInstagramEmbeds(2);
 
-    expect(instagramEmbedService.generateEmbeds).toHaveBeenCalledWith(['url1', 'url2']);
+    expect(instagramContentService.generateEmbeds).toHaveBeenCalledWith([
+      'url1',
+      'url2',
+    ]);
     expect(events[0].embedded_instagram).toBe('<embed1>');
     expect(events[1].embedded_instagram).toBe('<embed2>');
   });

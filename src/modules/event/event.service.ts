@@ -7,15 +7,13 @@ import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
-import { InstagramValidatorService } from './services/instagram-validator.service';
-import { InstagramEmbedService } from './services/instagram-embed.service';
+import { InstagramContentService } from './services/instagram-content.service';
 
 @Injectable()
 export class EventService {
   constructor(
     private prisma: PrismaService,
-    private instagramValidator: InstagramValidatorService,
-    private instagramEmbedService: InstagramEmbedService
+    private instagramContentService: InstagramContentService
   ) {}
 
   async create(dto: CreateEventDto) {
@@ -25,7 +23,7 @@ export class EventService {
 
   private async prepareEventData(dto: CreateEventDto) {
     if (dto.embedded_instagram) {
-      dto.embedded_instagram = await this.instagramValidator.validate(
+      dto.embedded_instagram = this.instagramContentService.validateUrl(
         dto.embedded_instagram
       );
     }
@@ -132,12 +130,14 @@ export class EventService {
 
       if (urls.length === 0) return events;
 
-      const embeds = await this.instagramEmbedService.generateEmbeds(urls);
+      const embeds = this.instagramContentService.generateEmbeds(urls);
       return this.mergeEmbedsWithEvents(events, embeds);
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
       if (err instanceof NotFoundException) return [];
-      throw new BadRequestException('Não foi possível obter embeds do Instagram');
+      throw new BadRequestException(
+        'Não foi possível obter embeds do Instagram'
+      );
     }
   }
 
