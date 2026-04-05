@@ -13,7 +13,10 @@ import { EmployeeService } from '../services/employee.service';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
 import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorator/roles.decorator';
 import { LoggedUser } from '@/common/decorator/user.decorator';
+import { EmployeeRole } from '../enums/role.enum';
 import { Employee } from '@prisma/client';
 import {
   ApiTags,
@@ -29,10 +32,15 @@ import {
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Post()
   @ApiOperation({ summary: 'Criar um novo funcionário' })
   @ApiResponse({ status: 201, description: 'Funcionário criado com sucesso' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
   create(@Body() dto: CreateEmployeeDto) {
     return this.employeeService.create(dto);
   }
@@ -92,16 +100,26 @@ export class EmployeeController {
     return this.employeeService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar funcionário' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
   update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto) {
     return this.employeeService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN)
   @Delete(':id')
   @ApiOperation({ summary: 'Desativar funcionário (soft delete)' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
   remove(@Param('id') id: string) {
     return this.employeeService.remove(id);
   }
