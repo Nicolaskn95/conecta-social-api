@@ -4,8 +4,10 @@ import {
   IsDateString,
   IsBoolean,
   IsInt,
+  IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EventStatus } from '@prisma/client';
 
 export class CreateEventDto {
   @ApiProperty({ example: 'Campanha de Natal', description: 'Nome do evento' })
@@ -71,9 +73,13 @@ export class CreateEventDto {
   @IsString()
   complement?: string;
 
-  @ApiProperty({ example: 'ATIVO', description: 'Status do evento' })
-  @IsString()
-  status: string;
+  @ApiProperty({
+    enum: EventStatus,
+    example: EventStatus.SCHEDULED,
+    description: 'Status do evento',
+  })
+  @IsEnum(EventStatus)
+  status: EventStatus;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

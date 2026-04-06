@@ -10,6 +10,16 @@ interface BucketConfig {
   start: Date;
 }
 
+interface DashboardEventRow {
+  id: string;
+  name: string;
+  city: string;
+  date: Date | string;
+  status: string;
+  attendance: number | null;
+  created_at: Date | string;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -18,7 +28,7 @@ export class DashboardService {
     const now = new Date();
     const bucketConfig = this.buildBucketConfig(period, now);
 
-    const [families, employees, events, donations] = await Promise.all([
+    const [families, employees, rawEvents, donations] = await Promise.all([
       this.prisma.family.findMany({
         where: { active: true },
         select: {
@@ -36,18 +46,7 @@ export class DashboardService {
           role: true,
         },
       }),
-      this.prisma.event.findMany({
-        where: { active: true },
-        select: {
-          id: true,
-          name: true,
-          city: true,
-          date: true,
-          status: true,
-          attendance: true,
-          created_at: true,
-        },
-      }),
+      this.getActiveEventsForDashboard(),
       this.prisma.donation.findMany({
         where: { active: true },
         select: {
@@ -67,6 +66,15 @@ export class DashboardService {
         },
       }),
     ]);
+
+    const events = rawEvents.map((event) => ({
+      ...event,
+      date: event.date instanceof Date ? event.date : new Date(event.date),
+      created_at:
+        event.created_at instanceof Date
+          ? event.created_at
+          : new Date(event.created_at),
+    }));
 
     const donationsCreatedSeries = this.createSeries(
       bucketConfig,
@@ -330,7 +338,7 @@ export class DashboardService {
       .replace(/[\u0300-\u036f]/g, '')
       .toUpperCase();
 
-    if (normalized.includes('CONCLUID')) {
+    if (normalized.includes('CONCLUID') || normalized.includes('COMPLET')) {
       return 'CONCLUIDO';
     }
 
@@ -338,10 +346,65 @@ export class DashboardService {
       return 'CANCELADO';
     }
 
-    if (normalized.includes('ABERTO') || normalized.includes('ATIVO')) {
+    if (
+      normalized.includes('ABERTO') ||
+      normalized.includes('ATIVO') ||
+      normalized.includes('SCHEDULED')
+    ) {
       return 'ABERTO';
     }
 
     return 'OUTROS';
+  }
+
+  private async getActiveEventsForDashboard(): Promise<DashboardEventRow[]> {
+    if (typeof (this.prisma as any).$queryRaw !== 'function') {
+      return this.prisma.event.findMany({
+        where: { active: true },
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          date: true,
+          status: true,
+          attendance: true,
+          created_at: true,
+        },
+      }) as unknown as DashboardEventRow[];
+    }
+
+    return this.prisma.$queryRaw<DashboardEventRow[]>`
+      SELECT
+        e.id,
+        e.name,
+        e.city,
+        e.date,
+        e.attendance,
+        e.created_at,
+        CASE
+          WHEN e.normalized_status LIKE '%CONCLUID%' OR e.normalized_status LIKE '%COMPLET%' THEN 'COMPLETED'
+          WHEN e.normalized_status LIKE '%CANCEL%' THEN 'CANCELED'
+          WHEN e.normalized_status LIKE '%ABERTO%' OR e.normalized_status LIKE '%ATIVO%' OR e.normalized_status LIKE '%SCHEDULED%' THEN 'SCHEDULED'
+          ELSE 'SCHEDULED'
+        END AS status
+      FROM (
+        SELECT
+          id,
+          name,
+          city,
+          date,
+          attendance,
+          created_at,
+          UPPER(
+            TRANSLATE(
+              TRIM(status::text),
+              'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ',
+              'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC'
+            )
+          ) AS normalized_status
+        FROM "events"
+        WHERE active = true
+      ) e
+    `;
   }
 }
