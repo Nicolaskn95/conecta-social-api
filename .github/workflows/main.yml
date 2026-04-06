@@ -29,6 +29,8 @@ jobs:
         run: npx prisma generate
 
       - name: Validar schema do Prisma
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
         run: npx prisma validate
 
       - name: Build da aplicação
@@ -65,6 +67,8 @@ jobs:
         run: npx prisma generate
 
       - name: Validar schema do Prisma
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
         run: npx prisma validate
 
       - name: Build da aplicação
