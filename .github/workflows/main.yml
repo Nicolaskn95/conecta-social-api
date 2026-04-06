@@ -30,7 +30,7 @@ jobs:
 
       - name: Validar schema do Prisma
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma validate
 
       - name: Build da aplicação
@@ -68,7 +68,7 @@ jobs:
 
       - name: Validar schema do Prisma
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npx prisma validate
 
       - name: Build da aplicação
