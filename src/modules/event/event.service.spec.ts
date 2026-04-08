@@ -44,7 +44,7 @@ describe('EventService', () => {
     const dto = {
       name: 'Evento',
       date: '2025-12-24T18:00:00Z',
-      status: 'ATIVO',
+      status: 'SCHEDULED',
       cep: '01001-000',
       street: 'Rua',
       neighborhood: 'Centro',

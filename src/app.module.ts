@@ -9,6 +9,7 @@ import { FamilyModule } from './modules/family/family.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DonationModule } from './modules/donation/donation.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ResourcesModule } from './modules/resources/resources.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     CategoryModule,
     DonationModule,
     DashboardModule,
+    ResourcesModule,
   ],
   controllers: [AppController],
   providers: [],
