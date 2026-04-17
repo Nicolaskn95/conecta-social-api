@@ -227,8 +227,13 @@ jobs:
 
             sudo systemctl start docker || sudo service docker start
 
-            docker stop "$REPO_NAME" 2>/dev/null || true
-            docker rm "$REPO_NAME" 2>/dev/null || true
+            # Remove o container deste app (nome fixo)
+            docker rm -f "$REPO_NAME" 2>/dev/null || true
+
+            # Libera a porta 3001 no host (outro nome de container ou deploy antigo)
+            for cid in $(docker ps -q --filter "publish=3001" 2>/dev/null); do
+              docker rm -f "$cid" || true
+            done
 
             docker image prune -f
 
