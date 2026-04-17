@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v6
         with:
           node-version: 20.x
 
@@ -47,13 +47,13 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v6
         with:
           node-version: 20.x
 
@@ -205,3 +205,40 @@ jobs:
           else
             echo "Nenhuma mudança para commit"
           fi
+
+  deploy-aws:
+    name: Deploy AWS (EC2)
+    runs-on: ubuntu-22.04
+    needs: cd
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Efetuar deploy na EC2 via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            REPO_NAME="${{ github.event.repository.name }}"
+            IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest"
+
+            echo "Iniciando deploy na AWS para a imagem: $IMAGE"
+
+            sudo systemctl start docker || sudo service docker start
+
+            docker stop "$REPO_NAME" 2>/dev/null || true
+            docker rm "$REPO_NAME" 2>/dev/null || true
+
+            docker image prune -f
+
+            docker pull "$IMAGE"
+
+            docker run -d \
+              --name "$REPO_NAME" \
+              -p 3001:3000 \
+              --restart always \
+              --pull always \
+              "$IMAGE"
+
+            echo "Deploy na AWS finalizado."
