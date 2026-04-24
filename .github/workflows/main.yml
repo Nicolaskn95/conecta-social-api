@@ -242,7 +242,7 @@ jobs:
             docker run -d \
               --name "$REPO_NAME" \
               -p 3001:3001 \
-              --env-file ~/.env \
+              --env-file /home/ec2-user/conecta-social-api/.env \
               --restart always \
               --pull always \
               "$IMAGE"
