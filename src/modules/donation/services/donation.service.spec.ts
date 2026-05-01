@@ -1,9 +1,11 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DonationService } from './donation.service';
 import { DonationRepository } from '../repositories/donation.repository';
+import { DonationImageService } from './donation-image.service';
 
 describe('DonationService', () => {
   let repository: jest.Mocked<DonationRepository>;
+  let imageService: jest.Mocked<DonationImageService>;
   let service: DonationService;
 
   beforeEach(() => {
@@ -18,7 +20,14 @@ describe('DonationService', () => {
       countActives: jest.fn(),
     } as any;
 
-    service = new DonationService(repository as any);
+    imageService = {
+      upload: jest.fn(),
+      getSignedImageUrl: jest.fn(),
+    } as any;
+
+    imageService.getSignedImageUrl.mockResolvedValue(null);
+
+    service = new DonationService(repository as any, imageService as any);
   });
 
   it('rejeita criação com quantidade inicial <= 0', async () => {
@@ -49,6 +58,29 @@ describe('DonationService', () => {
         total_pages: 2,
         is_last_page: false,
         list: [{ id: 'd1' }],
+      })
+    );
+  });
+
+  it('retorna image_url assinada quando doação possui imagem', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'd1',
+      image_key: 'donations/image.jpg',
+      image_bucket: 'bucket',
+    } as any);
+    imageService.getSignedImageUrl.mockResolvedValue(
+      'https://signed-url.example/image.jpg'
+    );
+
+    const result = await service.findById('d1');
+
+    expect(imageService.getSignedImageUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ image_key: 'donations/image.jpg' })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'd1',
+        image_url: 'https://signed-url.example/image.jpg',
       })
     );
   });

@@ -3,11 +3,21 @@ import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
 import { PrismaService } from '@/config/prisma/prisma.service';
 
+interface DonationImageFields {
+  image_key?: string;
+  image_bucket?: string;
+  image_content_type?: string;
+  image_original_name?: string;
+}
+
+type CreateDonationData = CreateDonationDto & Partial<DonationImageFields>;
+type UpdateDonationData = UpdateDonationDto & Partial<DonationImageFields>;
+
 @Injectable()
 export class DonationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateDonationDto) {
+  async create(data: CreateDonationData) {
     return this.prisma.donation.create({
       data: {
         ...data,
@@ -46,7 +56,7 @@ export class DonationRepository {
     });
   }
 
-  async update(id: string, data: UpdateDonationDto) {
+  async update(id: string, data: UpdateDonationData) {
     return this.prisma.donation.update({
       where: { id },
       data,

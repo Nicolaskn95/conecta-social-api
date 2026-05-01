@@ -16,6 +16,11 @@ services:
       - PORT=${PORT}
       - BETTER_STACK_URL=${BETTER_STACK_URL}
       - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - aws_access_key_id=${aws_access_key_id}
+      - aws_secret_access_key=${aws_secret_access_key}
+      - aws_session_token=${aws_session_token}
     command: yarn start:prod
 
   db:
