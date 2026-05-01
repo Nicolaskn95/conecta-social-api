@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsString,
@@ -41,6 +42,7 @@ export class CreateDonationDto {
     description: 'Quantidade inicial',
   })
   @IsNotEmpty()
+  @Type(() => Number)
   @IsNumber()
   initial_quantity: number;
 

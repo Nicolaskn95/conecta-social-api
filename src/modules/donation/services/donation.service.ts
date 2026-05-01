@@ -6,26 +6,50 @@ import {
 import { DonationRepository } from '../repositories/donation.repository';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
+import {
+  DonationImageMetadata,
+  DonationImageService,
+} from './donation-image.service';
+
+type DonationWithImage = {
+  image_key?: string | null;
+  image_bucket?: string | null;
+};
 
 @Injectable()
 export class DonationService {
-  constructor(private readonly donationRepository: DonationRepository) {}
+  constructor(
+    private readonly donationRepository: DonationRepository,
+    private readonly donationImageService: DonationImageService
+  ) {}
 
-  async create(createDonationDto: CreateDonationDto) {
+  async create(
+    createDonationDto: CreateDonationDto,
+    image?: Express.Multer.File
+  ) {
     if (createDonationDto.initial_quantity <= 0) {
       throw new BadRequestException(
         'A quantidade inicial deve ser maior que zero'
       );
     }
-    return this.donationRepository.create(createDonationDto);
+
+    const imageMetadata = await this.uploadImageIfPresent(image);
+    const donation = await this.donationRepository.create({
+      ...createDonationDto,
+      ...imageMetadata,
+    });
+
+    return this.withSignedImageUrl(donation);
   }
 
   async findAll() {
-    return this.donationRepository.findAll();
+    const donations = await this.donationRepository.findAll();
+    return this.withSignedImageUrls(donations);
   }
 
   async findAllActives() {
-    return this.donationRepository.findAllActives();
+    const donations = await this.donationRepository.findAllActives();
+    return this.withSignedImageUrls(donations);
   }
 
   async findAllPaginated(page = 1, size = 10) {
@@ -45,25 +69,75 @@ export class DonationService {
       is_last_page: isLastPage,
       previous_page: page > 1 ? page - 1 : 1,
       total_pages: totalPages,
-      list: donations,
+      list: await this.withSignedImageUrls(donations),
     };
   }
 
   async findById(id: string) {
-    const donation = await this.donationRepository.findById(id);
-    if (!donation) {
-      throw new NotFoundException('Doação não encontrada');
-    }
-    return donation;
+    const donation = await this.getActiveDonationOrThrow(id);
+    return this.withSignedImageUrl(donation);
   }
 
-  async update(id: string, updateDonationDto: UpdateDonationDto) {
-    await this.findById(id);
-    return this.donationRepository.update(id, updateDonationDto);
+  async update(
+    id: string,
+    updateDonationDto: UpdateDonationDto,
+    image?: Express.Multer.File
+  ) {
+    await this.getActiveDonationOrThrow(id);
+
+    const imageMetadata = await this.uploadImageIfPresent(image);
+    const donation = await this.donationRepository.update(id, {
+      ...updateDonationDto,
+      ...imageMetadata,
+    });
+
+    return this.withSignedImageUrl(donation);
   }
 
   async delete(id: string) {
-    await this.findById(id);
+    await this.getActiveDonationOrThrow(id);
     await this.donationRepository.delete(id);
+  }
+
+  private async getActiveDonationOrThrow(id: string) {
+    const donation = await this.donationRepository.findById(id);
+
+    if (!donation) {
+      throw new NotFoundException('Doação não encontrada');
+    }
+
+    return donation;
+  }
+
+  private async uploadImageIfPresent(
+    image?: Express.Multer.File
+  ): Promise<Partial<DonationImageMetadata>> {
+    if (!image) {
+      return {};
+    }
+
+    return this.donationImageService.upload(image);
+  }
+
+  private async withSignedImageUrls<T extends DonationWithImage>(
+    donations: T[]
+  ) {
+    return Promise.all(
+      donations.map((donation) => this.withSignedImageUrl(donation))
+    );
+  }
+
+  private async withSignedImageUrl<T extends DonationWithImage>(donation: T) {
+    const imageUrl =
+      await this.donationImageService.getSignedImageUrl(donation);
+
+    if (!imageUrl) {
+      return donation;
+    }
+
+    return {
+      ...donation,
+      image_url: imageUrl,
+    };
   }
 }
