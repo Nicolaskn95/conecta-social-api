@@ -10,6 +10,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { DonationModule } from './modules/donation/donation.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ResourcesModule } from './modules/resources/resources.module';
+import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ResourcesModule } from './modules/resources/resources.module';
     DonationModule,
     DashboardModule,
     ResourcesModule,
+    VoiceSearchModule,
   ],
   controllers: [AppController],
   providers: [],
