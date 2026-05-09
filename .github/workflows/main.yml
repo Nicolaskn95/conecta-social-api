@@ -254,59 +254,18 @@ jobs:
     runs-on: ubuntu-22.04
     needs: cd
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
-      - name: Login na Azure via OIDC
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Definir imagem DockerHub
         run: |
           REPO_NAME="${{ github.event.repository.name }}"
-          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest"
+          IMAGE="docker.io/${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
           echo "Imagem Azure: $IMAGE"
 
-      - name: Configurar container no Azure App Service
-        env:
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          az webapp config container set \
-            --name "$AZURE_WEBAPP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --container-image-name "$IMAGE" \
-            --container-registry-url "https://index.docker.io" \
-            --container-registry-user "$DOCKERHUB_USERNAME" \
-            --container-registry-password "$DOCKER_PASSWORD"
-
-      - name: Configurar app settings operacionais
-        env:
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          az webapp config appsettings set \
-            --name "$AZURE_WEBAPP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP" \
-            --settings \
-              WEBSITES_PORT=3001 \
-              PORT=3001 \
-              RUN_MIGRATIONS=false \
-              RUN_SEED=false
-
-      - name: Reiniciar Azure App Service
-        env:
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          az webapp restart \
-            --name "$AZURE_WEBAPP_NAME" \
-            --resource-group "$AZURE_RESOURCE_GROUP"
+      - name: Deploy no Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ${{ env.IMAGE }}

@@ -79,10 +79,7 @@ No repositorio `conecta-social-api`, configure estes secrets:
 
 ```env
 AZURE_WEBAPP_NAME=<nome do App Service>
-AZURE_RESOURCE_GROUP=<nome do Resource Group>
-AZURE_CLIENT_ID=<client id da federated credential>
-AZURE_TENANT_ID=<tenant id>
-AZURE_SUBSCRIPTION_ID=<subscription id>
+AZURE_WEBAPP_PUBLISH_PROFILE=<conteudo completo do publish profile>
 DOCKERHUB_USERNAME=<usuario DockerHub>
 DOCKER_PASSWORD=<token/senha DockerHub>
 DATABASE_URL=<connection string usada no migrate deploy>
@@ -93,7 +90,15 @@ EC2_USER=<usuario atual AWS>
 EC2_PRIVATE_KEY=<chave atual AWS>
 ```
 
-O workflow usa OIDC no passo `azure/login`, portanto crie uma federated credential no Microsoft Entra ID apontando para este repositorio e a branch `main`.
+Como contas Azure Educacao institucionais podem bloquear Microsoft Entra ID/IAM, o workflow usa Publish Profile em vez de OIDC. Para obter o valor:
+
+1. Abra o App Service no Azure Portal.
+2. Na tela `Visao geral`, clique em `Baixar perfil de publicacao` ou `Get publish profile`.
+3. Abra o arquivo `.PublishSettings` baixado.
+4. Copie todo o conteudo XML do arquivo.
+5. Crie o secret `AZURE_WEBAPP_PUBLISH_PROFILE` no GitHub com esse conteudo completo.
+
+Se o botao nao aparecer ou falhar, habilite publicacao basica no App Service em `Configuracao > Configuracao geral` ou procure por `Basic Auth Publishing Credentials`, salve e tente baixar o publish profile novamente.
 
 ## 5. Fluxo de deploy
 
@@ -104,7 +109,7 @@ Ao fazer push na `main`:
 3. CD publica a imagem Docker no DockerHub.
 4. Render recebe o deploy hook atual.
 5. AWS atualiza o container na EC2.
-6. Azure atualiza o App Service para a imagem `latest` do DockerHub, configura `WEBSITES_PORT=3001`, `RUN_MIGRATIONS=false` e `RUN_SEED=false`, e reinicia o app.
+6. Azure atualiza o App Service para a imagem `latest` do DockerHub usando o Publish Profile.
 
 ## 6. Validacao
 
