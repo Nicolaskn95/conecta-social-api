@@ -248,3 +248,24 @@ jobs:
               "$IMAGE"
 
             echo "Deploy na AWS finalizado."
+
+  deploy-azure:
+    name: Deploy Azure (App Service)
+    runs-on: ubuntu-22.04
+    needs: cd
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Definir imagem DockerHub
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          IMAGE="docker.io/${{ secrets.DOCKERHUB_USERNAME }}/$REPO_NAME:latest"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "Imagem Azure: $IMAGE"
+
+      - name: Deploy no Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ${{ env.IMAGE }}

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build: .
@@ -10,17 +8,26 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/mydb
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRATION=${JWT_EXPIRATION}
-      - PORT=${PORT}
-      - BETTER_STACK_URL=${BETTER_STACK_URL}
-      - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-      - aws_access_key_id=${aws_access_key_id}
-      - aws_secret_access_key=${aws_secret_access_key}
-      - aws_session_token=${aws_session_token}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/mydb}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-1d}
+      - PORT=${PORT:-3001}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+      - RUN_SEED=${RUN_SEED:-false}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_NAME=${ADMIN_NAME:-}
+      - ADMIN_SURNAME=${ADMIN_SURNAME:-}
+      - ADMIN_ROLE=${ADMIN_ROLE:-ADMIN}
+      - BETTER_STACK_URL=${BETTER_STACK_URL:-}
+      - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN:-}
+      - AWS_REGION=${AWS_REGION:-}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
+      - aws_access_key_id=${aws_access_key_id:-}
+      - aws_secret_access_key=${aws_secret_access_key:-}
+      - aws_session_token=${aws_session_token:-}
+      - AWS_S3_SIGNED_URL_EXPIRES=${AWS_S3_SIGNED_URL_EXPIRES:-}
     command: yarn start:prod
 
   db:

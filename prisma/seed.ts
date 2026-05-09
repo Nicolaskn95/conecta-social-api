@@ -2,20 +2,52 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
+const employeeRoles = ['ADMIN', 'MANAGER', 'VOLUNTEER'] as const;
+type EmployeeRole = (typeof employeeRoles)[number];
+
+function getAdminRole(): EmployeeRole {
+  const configuredRole = (process.env.ADMIN_ROLE ?? 'ADMIN').toUpperCase();
+
+  if (!employeeRoles.includes(configuredRole as EmployeeRole)) {
+    throw new Error(
+      `ADMIN_ROLE inválido. Use um destes valores: ${employeeRoles.join(', ')}.`
+    );
+  }
+
+  return configuredRole as EmployeeRole;
+}
 
 async function main() {
-  const password = await bcrypt.hash('admin123', 10);
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    throw new Error(
+      'ADMIN_PASSWORD precisa estar configurado para rodar o seed.'
+    );
+  }
+
+  const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@conecta.com';
+  const adminName = process.env.ADMIN_NAME ?? 'Admin';
+  const adminSurname = process.env.ADMIN_SURNAME ?? 'Root';
+  const adminRole = getAdminRole();
+  const password = await bcrypt.hash(adminPassword, 10);
 
   await prisma.employee.upsert({
-    where: { email: 'admin@conecta.com' },
-    update: {},
+    where: { email: adminEmail },
+    update: {
+      name: adminName,
+      surname: adminSurname,
+      password,
+      role: adminRole,
+      active: true,
+    },
     create: {
-      name: 'Admin',
-      surname: 'Root',
+      name: adminName,
+      surname: adminSurname,
       birth_date: new Date('1990-01-01'),
-      role: 'ADMIN',
+      role: adminRole,
       cpf: '00000000000',
-      email: 'admin@conecta.com',
+      email: adminEmail,
       password,
       phone: '(11)99999-9999',
       cep: '00000-000',

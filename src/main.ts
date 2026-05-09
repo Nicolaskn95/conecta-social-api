@@ -9,8 +9,37 @@ import pino from 'pino-http';
 import { LoggerService } from './common/logger/logger.service';
 import { LoggingInterceptor } from './common/interceptor/logging.interceptor';
 
+const DEFAULT_CORS_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/+$/, '');
+}
+
+function getAllowedCorsOrigins() {
+  const configuredOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+  return configuredOrigins.length > 0
+    ? configuredOrigins
+    : DEFAULT_CORS_ORIGINS;
+}
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const allowedCorsOrigins = getAllowedCorsOrigins();
+  const app = await NestFactory.create(AppModule, {
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin || allowedCorsOrigins.includes(normalizeOrigin(origin))) {
+          return callback(null, true);
+        }
+
+        return callback(new Error('Origem bloqueada por CORS'), false);
+      },
+      credentials: true,
+    },
+  });
   const logger = app.get(LoggerService); // ✅ simples e funciona
 
   app.useGlobalFilters(new ErrorFilter());
