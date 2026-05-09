@@ -24,9 +24,9 @@ services:
       - BETTER_STACK_TOKEN=${BETTER_STACK_TOKEN:-}
       - AWS_REGION=${AWS_REGION:-}
       - AWS_S3_BUCKET=${AWS_S3_BUCKET:-}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+      - aws_access_key_id=${aws_access_key_id:-}
+      - aws_secret_access_key=${aws_secret_access_key:-}
+      - aws_session_token=${aws_session_token:-}
       - AWS_S3_SIGNED_URL_EXPIRES=${AWS_S3_SIGNED_URL_EXPIRES:-}
     command: yarn start:prod
 
