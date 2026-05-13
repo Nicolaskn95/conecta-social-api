@@ -8,7 +8,8 @@ export class FamilyService {
   constructor(private familyRepository: FamilyRepositoryImpl) {}
 
   create(dto: CreateFamilyDto) {
-    return this.familyRepository.create(dto);
+    const { active: _active, ...data } = dto;
+    return this.familyRepository.create(data);
   }
 
   findAll() {
@@ -54,7 +55,8 @@ export class FamilyService {
 
   async update(id: string, dto: UpdateFamilyDto) {
     await this.findOne(id);
-    return this.familyRepository.update(id, dto);
+    const { active: _active, ...data } = dto;
+    return this.familyRepository.update(id, data);
   }
 
   async remove(id: string) {

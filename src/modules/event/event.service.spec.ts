@@ -1,7 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventService } from './event.service';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { InstagramContentService } from './services/instagram-content.service';
+import { EmployeeRole, EventStatus } from '@prisma/client';
 
 describe('EventService', () => {
   let prisma: {
@@ -127,5 +128,57 @@ describe('EventService', () => {
         list: [{ id: '1' }],
       })
     );
+  });
+
+  it('permite voluntário marcar evento como concluído', async () => {
+    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
+    prisma.event.update.mockResolvedValue({
+      id: 'event-1',
+      status: EventStatus.COMPLETED,
+    });
+
+    const result = await service.updateStatus(
+      'event-1',
+      EventStatus.COMPLETED,
+      { role: EmployeeRole.VOLUNTEER } as any
+    );
+
+    expect(prisma.event.update).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      data: { status: EventStatus.COMPLETED },
+    });
+    expect(result.status).toBe(EventStatus.COMPLETED);
+  });
+
+  it('bloqueia voluntário ao cancelar evento', async () => {
+    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
+
+    await expect(
+      service.updateStatus('event-1', EventStatus.CANCELED, {
+        role: EmployeeRole.VOLUNTEER,
+      } as any)
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.event.update).not.toHaveBeenCalled();
+  });
+
+  it('valida link do instagram ao atualizar publicação', async () => {
+    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
+    instagramContentService.validateUrl.mockReturnValue(
+      'https://www.instagram.com/p/abc/'
+    );
+    prisma.event.update.mockResolvedValue({
+      id: 'event-1',
+      embedded_instagram: 'https://www.instagram.com/p/abc/',
+    });
+
+    await service.updateInstagram('event-1', 'https://instagram.com/p/abc');
+
+    expect(instagramContentService.validateUrl).toHaveBeenCalledWith(
+      'https://instagram.com/p/abc'
+    );
+    expect(prisma.event.update).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      data: { embedded_instagram: 'https://www.instagram.com/p/abc/' },
+    });
   });
 });

@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   UseGuards,
   Query,
@@ -17,11 +18,16 @@ import {
 } from '@nestjs/swagger';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
+import { UpdateEventBasicDto } from './dto/update-event-basic.dto';
+import { UpdateEventStatusDto } from './dto/update-event-status.dto';
+import { UpdateEventAttendanceDto } from './dto/update-event-attendance.dto';
+import { UpdateEventInstagramDto } from './dto/update-event-instagram.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { EmployeeRole } from '@/modules/employee/enums/role.enum';
+import { LoggedUser } from '@/common/decorator/user.decorator';
+import { Employee } from '@prisma/client';
 
 @ApiTags('Events')
 @Controller('events')
@@ -125,14 +131,52 @@ export class EventController {
     return this.eventService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Put(':id')
-  @ApiOperation({ summary: 'Atualizar evento por ID' })
+  @ApiOperation({ summary: 'Atualizar dados básicos do evento por ID' })
   @ApiResponse({ status: 200, description: 'Evento atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado' })
-  update(@Param('id') id: string, @Body() dto: UpdateEventDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateEventBasicDto) {
     return this.eventService.update(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
+  @ApiBearerAuth()
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Atualizar status do evento' })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateEventStatusDto,
+    @LoggedUser() employee: Employee
+  ) {
+    return this.eventService.updateStatus(id, dto.status, employee);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
+  @ApiBearerAuth()
+  @Patch(':id/attendance')
+  @ApiOperation({ summary: 'Atualizar presença do evento' })
+  updateAttendance(
+    @Param('id') id: string,
+    @Body() dto: UpdateEventAttendanceDto
+  ) {
+    return this.eventService.updateAttendance(id, dto.attendance);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
+  @ApiBearerAuth()
+  @Patch(':id/instagram')
+  @ApiOperation({ summary: 'Atualizar post do Instagram do evento' })
+  updateInstagram(
+    @Param('id') id: string,
+    @Body() dto: UpdateEventInstagramDto
+  ) {
+    return this.eventService.updateInstagram(id, dto.embedded_instagram);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -24,6 +24,11 @@ import { DonationService } from '../services/donation.service';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorator/roles.decorator';
+import { EmployeeRole } from '@/modules/employee/enums/role.enum';
+import { LoggedUser } from '@/common/decorator/user.decorator';
+import { Employee } from '@prisma/client';
 
 const DONATION_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -141,11 +146,14 @@ export class DonationController {
   update(
     @Param('id') id: string,
     @Body() updateDonationDto: UpdateDonationDto,
-    @UploadedFile() image?: Express.Multer.File
+    @UploadedFile() image?: Express.Multer.File,
+    @LoggedUser() employee?: Employee
   ) {
-    return this.donationService.update(id, updateDonationDto, image);
+    return this.donationService.update(id, updateDonationDto, image, employee);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deletar uma doação' })
   delete(@Param('id') id: string) {

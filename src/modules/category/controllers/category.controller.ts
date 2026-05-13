@@ -24,13 +24,17 @@ import { CreateCategoryDto } from '../dtos/create-category.dto';
 import { UpdateCategoryDto } from '../dtos/update-category.dto';
 import { CategoryResponseDto } from '../dtos/category.response.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorator/roles.decorator';
+import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 
 @ApiTags('Categories')
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -43,7 +47,8 @@ export class CategoryController {
     return this.categoryService.create(createCategoryDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get()
   @ApiOperation({ summary: 'Listar todas as categorias' })
@@ -55,7 +60,8 @@ export class CategoryController {
     return this.categoryService.findAll();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({ summary: 'Buscar uma categoria pelo ID' })
@@ -66,7 +72,8 @@ export class CategoryController {
     return this.categoryService.findById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar uma categoria' })
@@ -80,7 +87,8 @@ export class CategoryController {
     return this.categoryService.update(id, updateCategoryDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)

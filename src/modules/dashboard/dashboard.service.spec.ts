@@ -149,4 +149,31 @@ describe('DashboardService', () => {
     expect(result.lists.upcoming_events).toHaveLength(1);
     expect(result.lists.recent_families).toHaveLength(2);
   });
+
+  it('remove métricas sensíveis do dashboard de voluntário', async () => {
+    const now = new Date();
+    prisma.family.findMany.mockResolvedValue([
+      {
+        id: 'family-1',
+        name: 'Família Souza',
+        city: 'Sorocaba',
+        neighborhood: 'Centro',
+        created_at: now,
+      },
+    ]);
+    prisma.employee.findMany.mockResolvedValue([
+      { id: 'employee-1', role: EmployeeRole.ADMIN },
+    ]);
+    prisma.event.findMany.mockResolvedValue([]);
+    prisma.donation.findMany.mockResolvedValue([]);
+
+    const result = await service.getOverview('year', EmployeeRole.VOLUNTEER);
+
+    expect(result.summary).not.toHaveProperty('active_employees');
+    expect(result.summary).not.toHaveProperty('employees_by_role');
+    expect(result.lists).not.toHaveProperty('recent_donations');
+    expect(result.lists).not.toHaveProperty('recent_families');
+    expect(result.lists.upcoming_events).toEqual([]);
+    expect(result.lists.critical_stock).toEqual([]);
+  });
 });

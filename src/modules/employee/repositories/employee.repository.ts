@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { EmployeeRepository } from './employee.repository.interface';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
-import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
-import { Employee } from '@prisma/client';
+import { Employee, EmployeeRole, Prisma } from '@prisma/client';
 
 @Injectable()
 export class EmployeeRepositoryImpl implements EmployeeRepository {
@@ -25,8 +24,10 @@ export class EmployeeRepositoryImpl implements EmployeeRepository {
     return this.prisma.employee.findMany();
   }
 
-  findAllActives(): Promise<Employee[]> {
-    return this.prisma.employee.findMany({ where: { active: true } });
+  findAllActives(role?: EmployeeRole): Promise<Employee[]> {
+    return this.prisma.employee.findMany({
+      where: { active: true, ...(role ? { role } : {}) },
+    });
   }
 
   findById(id: string): Promise<Employee | null> {
@@ -41,7 +42,7 @@ export class EmployeeRepositoryImpl implements EmployeeRepository {
     return this.prisma.employee.findUnique({ where: { cpf } });
   }
 
-  update(id: string, data: UpdateEmployeeDto): Promise<Employee> {
+  update(id: string, data: Prisma.EmployeeUpdateInput): Promise<Employee> {
     return this.prisma.employee.update({ where: { id }, data });
   }
 
@@ -52,16 +53,22 @@ export class EmployeeRepositoryImpl implements EmployeeRepository {
     });
   }
 
-  findPaginated(skip: number, take: number): Promise<Employee[]> {
+  findPaginated(
+    skip: number,
+    take: number,
+    role?: EmployeeRole
+  ): Promise<Employee[]> {
     return this.prisma.employee.findMany({
-      where: { active: true },
+      where: { active: true, ...(role ? { role } : {}) },
       orderBy: { created_at: 'desc' },
       skip,
       take,
     });
   }
 
-  countActives(): Promise<number> {
-    return this.prisma.employee.count({ where: { active: true } });
+  countActives(role?: EmployeeRole): Promise<number> {
+    return this.prisma.employee.count({
+      where: { active: true, ...(role ? { role } : {}) },
+    });
   }
 }
