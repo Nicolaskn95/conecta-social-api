@@ -5,8 +5,11 @@ import { EventStatusResponseDto } from '../dtos/event-status-response.dto';
 
 @Injectable()
 export class ResourcesService {
-  getRoles(): RolesResponseDto {
-    const roles = [
+  getRoles(currentRole: EmployeeRole): RolesResponseDto {
+    const roles =
+      currentRole === EmployeeRole.MANAGER
+        ? [{ label: 'Voluntário', value: EmployeeRole.VOLUNTEER }]
+        : [
       { label: 'Administrador', value: EmployeeRole.ADMIN },
       { label: 'Gerente', value: EmployeeRole.MANAGER },
       { label: 'Voluntário', value: EmployeeRole.VOLUNTEER },

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { DashboardPeriod } from './dto/dashboard-overview-query.dto';
+import { EmployeeRole } from '@prisma/client';
 
 type SupportedStatus = 'ABERTO' | 'CONCLUIDO' | 'CANCELADO' | 'OUTROS';
 
@@ -24,7 +25,7 @@ interface DashboardEventRow {
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getOverview(period: DashboardPeriod = 'year') {
+  async getOverview(period: DashboardPeriod = 'year', role?: EmployeeRole) {
     const now = new Date();
     const bucketConfig = this.buildBucketConfig(period, now);
 
@@ -175,7 +176,7 @@ export class DashboardService {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    return {
+    const overview = {
       period,
       generated_at: now.toISOString(),
       summary: {
@@ -257,6 +258,15 @@ export class DashboardService {
         })),
       },
     };
+
+    if (role === EmployeeRole.VOLUNTEER) {
+      delete (overview.summary as any).active_employees;
+      delete (overview.summary as any).employees_by_role;
+      delete (overview.lists as any).recent_donations;
+      delete (overview.lists as any).recent_families;
+    }
+
+    return overview;
   }
 
   private createSeries(bucketConfig: BucketConfig, dates: Date[]) {

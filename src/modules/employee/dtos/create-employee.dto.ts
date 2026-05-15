@@ -126,6 +126,14 @@ export class CreateEmployeeDto {
   state: string;
 
   @ApiPropertyOptional({
+    example: 'Apto 45',
+    description: 'Complemento do endereço',
+  })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @ApiPropertyOptional({
     example: true,
     description: 'Define se o funcionário está ativo',
     default: true,

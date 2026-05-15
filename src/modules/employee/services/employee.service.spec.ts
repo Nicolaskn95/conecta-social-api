@@ -62,7 +62,7 @@ describe('EmployeeService', () => {
 
     const result = await service.findAllPaginated(2, 2);
 
-    expect(repository.findPaginated).toHaveBeenCalledWith(2, 2);
+    expect(repository.findPaginated).toHaveBeenCalledWith(2, 2, undefined);
     expect(result).toEqual(
       expect.objectContaining({
         page: 2,
@@ -80,5 +80,32 @@ describe('EmployeeService', () => {
     const result = await service.remove('e1');
     expect(disableUseCase.execute).toHaveBeenCalledWith('e1');
     expect(result).toEqual({ id: 'e1', active: false });
+  });
+
+  it('filtra paginação de gerente para voluntários', async () => {
+    repository.findPaginated.mockResolvedValue([{ id: 'e1' } as any]);
+    repository.countActives.mockResolvedValue(1);
+
+    await service.findAllPaginated(1, 10, {
+      role: 'MANAGER',
+    } as any);
+
+    expect(repository.findPaginated).toHaveBeenCalledWith(0, 10, 'VOLUNTEER');
+    expect(repository.countActives).toHaveBeenCalledWith('VOLUNTEER');
+  });
+
+  it('bloqueia gerente ao editar funcionário que não é voluntário', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'manager-2',
+      role: 'MANAGER',
+    } as any);
+
+    await expect(
+      service.updateBasic(
+        'manager-2',
+        { name: 'Novo' },
+        { role: 'MANAGER' } as any
+      )
+    ).rejects.toThrow('Gerentes só podem gerenciar voluntários.');
   });
 });

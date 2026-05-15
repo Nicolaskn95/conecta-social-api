@@ -1,19 +1,13 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateEmployeeDto } from './create-employee.dto';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsOptional,
-  IsBoolean,
   IsDateString,
   IsEmail,
-  IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
-  Length,
 } from 'class-validator';
-import { EmployeeRole } from '@prisma/client';
 
-export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
+export class UpdateEmployeeBasicDto {
   @ApiPropertyOptional({ example: 'João' })
   @IsOptional()
   @IsString()
@@ -31,7 +25,7 @@ export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
   @IsDateString()
   birth_date?: string;
 
-  @ApiPropertyOptional({ example: '123.456.789-00' })
+  @ApiPropertyOptional({ example: '12345678900' })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -47,20 +41,6 @@ export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
   @IsString()
   @IsNotEmpty()
   phone?: string;
-
-  @ApiPropertyOptional({ example: 'novaSenha123' })
-  @IsOptional()
-  @IsString()
-  @Length(6, 20)
-  password?: string;
-
-  @ApiPropertyOptional({
-    enum: EmployeeRole,
-    example: EmployeeRole.ADMIN,
-  })
-  @IsOptional()
-  @IsEnum(EmployeeRole)
-  role?: EmployeeRole;
 
   @ApiPropertyOptional({ example: '01001-000' })
   @IsOptional()
@@ -102,9 +82,4 @@ export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
   @IsOptional()
   @IsString()
   complement?: string;
-
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @IsBoolean()
-  active?: boolean;
 }

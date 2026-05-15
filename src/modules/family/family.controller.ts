@@ -19,13 +19,17 @@ import { FamilyService } from './family.service';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { UpdateFamilyDto } from './dto/update-family.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { Roles } from '@/common/decorator/roles.decorator';
+import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 
 @ApiTags('Families')
 @Controller('families')
 export class FamilyController {
   constructor(private readonly familyService: FamilyService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Post()
   @ApiOperation({ summary: 'Criar nova família' })
@@ -34,7 +38,8 @@ export class FamilyController {
     return this.familyService.create(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get()
   @ApiOperation({ summary: 'Listar famílias ativas' })
@@ -43,7 +48,8 @@ export class FamilyController {
     return this.familyService.findAllActives();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get('paginated')
   @ApiOperation({ summary: 'Listar famílias com paginação' })
@@ -70,7 +76,8 @@ export class FamilyController {
     return this.familyService.findAllPaginated(pageNumber, pageSize);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get('all')
   @ApiOperation({ summary: 'Listar todas as famílias' })
@@ -79,7 +86,8 @@ export class FamilyController {
     return this.familyService.findAll();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({ summary: 'Buscar família por ID' })
@@ -89,7 +97,8 @@ export class FamilyController {
     return this.familyService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
   @ApiBearerAuth()
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar família' })
@@ -98,7 +107,8 @@ export class FamilyController {
     return this.familyService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @ApiBearerAuth()
   @Delete(':id')
   @ApiOperation({ summary: 'Desativar família' })

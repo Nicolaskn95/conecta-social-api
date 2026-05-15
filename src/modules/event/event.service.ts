@@ -2,12 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
+import { UpdateEventBasicDto } from './dto/update-event-basic.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
 import { InstagramContentService } from './services/instagram-content.service';
+import { Employee, EmployeeRole, EventStatus } from '@prisma/client';
 
 @Injectable()
 export class EventService {
@@ -55,7 +57,7 @@ export class EventService {
     return event;
   }
 
-  async update(id: string, dto: UpdateEventDto) {
+  async update(id: string, dto: UpdateEventBasicDto) {
     await this.findOne(id);
 
     return this.prisma.event.update({
@@ -64,6 +66,43 @@ export class EventService {
         ...dto,
         date: dto.date ? new Date(dto.date) : undefined,
       },
+    });
+  }
+
+  async updateStatus(id: string, status: EventStatus, actor: Employee) {
+    await this.findOne(id);
+
+    if (actor.role === EmployeeRole.VOLUNTEER && status !== EventStatus.COMPLETED) {
+      throw new ForbiddenException(
+        'Voluntários só podem marcar eventos como concluídos.'
+      );
+    }
+
+    return this.prisma.event.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  async updateAttendance(id: string, attendance: number) {
+    await this.findOne(id);
+
+    return this.prisma.event.update({
+      where: { id },
+      data: { attendance },
+    });
+  }
+
+  async updateInstagram(id: string, embeddedInstagram?: string) {
+    await this.findOne(id);
+
+    const normalizedInstagram = embeddedInstagram
+      ? this.instagramContentService.validateUrl(embeddedInstagram)
+      : null;
+
+    return this.prisma.event.update({
+      where: { id },
+      data: { embedded_instagram: normalizedInstagram },
     });
   }
 

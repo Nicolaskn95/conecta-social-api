@@ -7,6 +7,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { LoggedUser } from '@/common/decorator/user.decorator';
+import { Employee } from '@prisma/client';
 import { DashboardService } from './dashboard.service';
 import {
   DASHBOARD_PERIODS,
@@ -32,7 +34,10 @@ export class DashboardController {
     status: 200,
     description: 'Indicadores do dashboard retornados com sucesso',
   })
-  getOverview(@Query() query: DashboardOverviewQueryDto) {
-    return this.dashboardService.getOverview(query.period ?? 'year');
+  getOverview(
+    @Query() query: DashboardOverviewQueryDto,
+    @LoggedUser() employee: Employee
+  ) {
+    return this.dashboardService.getOverview(query.period ?? 'year', employee.role);
   }
 }

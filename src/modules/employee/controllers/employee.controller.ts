@@ -5,13 +5,17 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   UseGuards,
   Query,
 } from '@nestjs/common';
 import { EmployeeService } from '../services/employee.service';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
-import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
+import { UpdateEmployeeBasicDto } from '../dtos/update-employee-basic.dto';
+import { UpdateEmployeeRoleDto } from '../dtos/update-employee-role.dto';
+import { UpdateEmployeePasswordDto } from '../dtos/update-employee-password.dto';
+import { UpdateOwnPasswordDto } from '../dtos/update-own-password.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
@@ -41,19 +45,21 @@ export class EmployeeController {
     status: 403,
     description: 'Acesso negado (nível de permissão insuficiente)',
   })
-  create(@Body() dto: CreateEmployeeDto) {
-    return this.employeeService.create(dto);
+  create(@Body() dto: CreateEmployeeDto, @LoggedUser() employee: Employee) {
+    return this.employeeService.create(dto, employee);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Get()
   @ApiOperation({ summary: 'Listar funcionários ativos' })
   @ApiResponse({ status: 200, description: 'Lista de funcionários ativos' })
-  findAllActives() {
-    return this.employeeService.findAllActives();
+  findAllActives(@LoggedUser() employee: Employee) {
+    return this.employeeService.findAllActives(employee);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Get('paginated')
   @ApiOperation({ summary: 'Listar funcionários com paginação' })
   @ApiResponse({
@@ -72,44 +78,111 @@ export class EmployeeController {
   })
   findAllPaginated(
     @Query('page') page?: string,
-    @Query('size') size?: string
+    @Query('size') size?: string,
+    @LoggedUser() employee?: Employee
   ) {
     const pageNumber = page ? parseInt(page, 10) : 1;
     const pageSize = size ? parseInt(size, 10) : 10;
-    return this.employeeService.findAllPaginated(pageNumber, pageSize);
+    return this.employeeService.findAllPaginated(
+      pageNumber,
+      pageSize,
+      employee
+    );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Get('all')
   @ApiOperation({ summary: 'Listar todos os funcionários' })
   @ApiResponse({ status: 200, description: 'Lista de funcionários' })
-  findAll() {
-    return this.employeeService.findAll();
+  findAll(@LoggedUser() employee: Employee) {
+    return this.employeeService.findAll(employee);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@LoggedUser() employee: Employee) {
-    return employee;
+    const { password: _password, ...safeEmployee } = employee;
+    return safeEmployee;
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  @ApiOperation({ summary: 'Atualizar o próprio perfil' })
+  updateOwnProfile(
+    @LoggedUser() employee: Employee,
+    @Body() dto: UpdateEmployeeBasicDto
+  ) {
+    return this.employeeService.updateOwnProfile(employee, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/password')
+  @ApiOperation({ summary: 'Alterar a própria senha' })
+  updateOwnPassword(
+    @LoggedUser() employee: Employee,
+    @Body() dto: UpdateOwnPasswordDto
+  ) {
+    return this.employeeService.updateOwnPassword(
+      employee,
+      dto.current_password,
+      dto.new_password
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Get(':id')
   @ApiOperation({ summary: 'Buscar funcionário por ID' })
-  findOne(@Param('id') id: string) {
-    return this.employeeService.findOne(id);
+  findOne(@Param('id') id: string, @LoggedUser() employee: Employee) {
+    return this.employeeService.findOne(id, employee);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
+  @Put(':id/basic')
+  @ApiOperation({ summary: 'Atualizar dados básicos de funcionário' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado (nível de permissão insuficiente)',
+  })
+  updateBasic(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeeBasicDto,
+    @LoggedUser() employee: Employee
+  ) {
+    return this.employeeService.updateBasic(id, dto, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Put(':id')
-  @ApiOperation({ summary: 'Atualizar funcionário' })
-  @ApiResponse({
-    status: 403,
-    description: 'Acesso negado (nível de permissão insuficiente)',
-  })
-  update(@Param('id') id: string, @Body() dto: UpdateEmployeeDto) {
-    return this.employeeService.update(id, dto);
+  @ApiOperation({ summary: 'Atualizar dados básicos de funcionário' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeeBasicDto,
+    @LoggedUser() employee: Employee
+  ) {
+    return this.employeeService.updateBasic(id, dto, employee);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN)
+  @Patch(':id/role')
+  @ApiOperation({ summary: 'Alterar nível de acesso de funcionário' })
+  updateRole(@Param('id') id: string, @Body() dto: UpdateEmployeeRoleDto) {
+    return this.employeeService.updateRole(id, dto.role);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN)
+  @Patch(':id/password')
+  @ApiOperation({ summary: 'Alterar senha de outro funcionário' })
+  updatePassword(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeePasswordDto
+  ) {
+    return this.employeeService.updatePassword(id, dto.password);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

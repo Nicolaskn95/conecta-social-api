@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { DonationRepository } from '../repositories/donation.repository';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
@@ -10,6 +11,7 @@ import {
   DonationImageMetadata,
   DonationImageService,
 } from './donation-image.service';
+import { Employee, EmployeeRole } from '@prisma/client';
 
 type DonationWithImage = {
   image_key?: string | null;
@@ -81,9 +83,19 @@ export class DonationService {
   async update(
     id: string,
     updateDonationDto: UpdateDonationDto,
-    image?: Express.Multer.File
+    image?: Express.Multer.File,
+    actor?: Employee
   ) {
     await this.getActiveDonationOrThrow(id);
+
+    if (
+      actor?.role === EmployeeRole.VOLUNTEER &&
+      updateDonationDto.active !== undefined
+    ) {
+      throw new ForbiddenException(
+        'Voluntários não podem desativar ou reativar doações.'
+      );
+    }
 
     const imageMetadata = await this.uploadImageIfPresent(image);
     const donation = await this.donationRepository.update(id, {

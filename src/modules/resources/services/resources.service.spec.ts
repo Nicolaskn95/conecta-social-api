@@ -9,11 +9,19 @@ describe('ResourcesService', () => {
   });
 
   it('retorna roles com labels e valores esperados', () => {
-    const result = service.getRoles();
+    const result = service.getRoles(EmployeeRole.ADMIN);
 
     expect(result.roles).toEqual([
       { label: 'Administrador', value: EmployeeRole.ADMIN },
       { label: 'Gerente', value: EmployeeRole.MANAGER },
+      { label: 'Voluntário', value: EmployeeRole.VOLUNTEER },
+    ]);
+  });
+
+  it('retorna apenas voluntário quando usuário atual é gerente', () => {
+    const result = service.getRoles(EmployeeRole.MANAGER);
+
+    expect(result.roles).toEqual([
       { label: 'Voluntário', value: EmployeeRole.VOLUNTEER },
     ]);
   });

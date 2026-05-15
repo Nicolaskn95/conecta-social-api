@@ -1,7 +1,12 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DonationService } from './donation.service';
 import { DonationRepository } from '../repositories/donation.repository';
 import { DonationImageService } from './donation-image.service';
+import { EmployeeRole } from '@prisma/client';
 
 describe('DonationService', () => {
   let repository: jest.Mocked<DonationRepository>;
@@ -93,5 +98,19 @@ describe('DonationService', () => {
 
     expect(repository.findById).toHaveBeenCalledWith('d1');
     expect(repository.delete).toHaveBeenCalledWith('d1');
+  });
+
+  it('bloqueia voluntário ao enviar active na atualização', async () => {
+    repository.findById.mockResolvedValue({ id: 'd1' } as any);
+
+    await expect(
+      service.update(
+        'd1',
+        { active: false },
+        undefined,
+        { role: EmployeeRole.VOLUNTEER } as any
+      )
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repository.update).not.toHaveBeenCalled();
   });
 });
