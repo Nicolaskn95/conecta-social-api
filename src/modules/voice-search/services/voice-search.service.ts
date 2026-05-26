@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import axios from 'axios';
 import * as natural from 'natural';
 
 type FaqIntent =
@@ -10,6 +11,9 @@ type FaqIntent =
   | 'horario'
   | 'pix'
   | 'desconhecida';
+
+type ChatbotSource = 'llm' | 'faq_fallback';
+type FaqChatHistoryRole = 'user' | 'assistant';
 
 interface FaqItem {
   id: string;
@@ -33,6 +37,36 @@ export interface FaqVoiceSearchResponse {
   tokens: string[];
   intent: FaqIntent;
   results: FaqSearchResult[];
+}
+
+export interface FaqChatHistoryMessage {
+  role: FaqChatHistoryRole;
+  content: string;
+}
+
+export interface FaqChatbotResponse {
+  query: string;
+  answer: string;
+  source: ChatbotSource;
+  intent: FaqIntent;
+  references: FaqSearchResult[];
+}
+
+interface MaritacaOutputContent {
+  type?: string;
+  text?: string;
+}
+
+interface MaritacaOutputItem {
+  type?: string;
+  content?: MaritacaOutputContent[];
+  text?: string;
+}
+
+interface MaritacaResponsesApiBody {
+  status?: string;
+  output?: MaritacaOutputItem[];
+  error?: { message?: string } | null;
 }
 
 // The stopwords package from the activity does not ship a Portuguese list.
@@ -151,6 +185,18 @@ const INTENT_KEYWORDS: Record<Exclude<FaqIntent, 'desconhecida'>, string[]> = {
 export class VoiceSearchService {
   private readonly tokenizer = new natural.WordTokenizer();
   private readonly stopwords = new Set(PORTUGUESE_STOPWORDS);
+  private readonly maritacaApiKey = process.env.MARITACA_API_KEY?.trim() ?? '';
+  private readonly maritacaModel =
+    process.env.MARITACA_MODEL?.trim() || 'sabia-4';
+  private readonly maritacaResponsesUrl =
+    process.env.MARITACA_RESPONSES_URL?.trim() ||
+    'https://chat.maritaca.ai/api/v1/responses';
+  private readonly maritacaAuthScheme =
+    process.env.MARITACA_AUTH_SCHEME?.trim() || 'Bearer';
+  private readonly maritacaTimeoutMs = Number(
+    process.env.MARITACA_TIMEOUT_MS ?? 15000
+  );
+  private readonly maxHistoryMessages = 6;
 
   searchFaq(query: string): FaqVoiceSearchResponse {
     const normalizedQuery = this.normalize(query);
@@ -165,6 +211,54 @@ export class VoiceSearchService {
       intent,
       results: results.length > 0 ? results : [this.getFallbackResult()],
     };
+  }
+
+  async chatFaq(
+    query: string,
+    history: FaqChatHistoryMessage[] = []
+  ): Promise<FaqChatbotResponse> {
+    const faqResponse = this.searchFaq(query);
+    const references = faqResponse.results.slice(0, 3);
+    const fallbackAnswer = this.buildFallbackAnswer(faqResponse);
+
+    if (!this.maritacaApiKey) {
+      return {
+        query,
+        answer: fallbackAnswer,
+        source: 'faq_fallback',
+        intent: faqResponse.intent,
+        references,
+      };
+    }
+
+    try {
+      const reply = await this.generateMaritacaReply(
+        query,
+        references,
+        this.sanitizeHistory(history)
+      );
+
+      if (!reply) {
+        throw new Error('Resposta vazia da Maritaca');
+      }
+
+      return {
+        query,
+        answer: reply,
+        source: 'llm',
+        intent: faqResponse.intent,
+        references,
+      };
+    } catch (error) {
+      console.error('[voice-search] Falha ao consultar Maritaca:', error);
+      return {
+        query,
+        answer: fallbackAnswer,
+        source: 'faq_fallback',
+        intent: faqResponse.intent,
+        references,
+      };
+    }
   }
 
   normalize(text: string) {
@@ -222,6 +316,135 @@ export class VoiceSearchService {
     })
       .filter((faq) => faq.score > 0)
       .sort((a, b) => b.score - a.score);
+  }
+
+  private async generateMaritacaReply(
+    query: string,
+    references: FaqSearchResult[],
+    history: FaqChatHistoryMessage[]
+  ): Promise<string | null> {
+    const context = this.buildFaqContext(references);
+    const { data } = await axios.post<MaritacaResponsesApiBody>(
+      this.maritacaResponsesUrl,
+      {
+        model: this.maritacaModel,
+        instructions: [
+          'Você é o assistente virtual do projeto social Conecta Social.',
+          'Responda sempre em português do Brasil, com linguagem clara, acolhedora e objetiva.',
+          'Use apenas as informações do contexto fornecido.',
+          'Se não houver contexto suficiente, informe com transparência e oriente o contato via WhatsApp +55 (15) 99999-9999.',
+          'Evite inventar dados, nomes, horários ou endereços que não estejam no contexto.',
+        ].join(' '),
+        input: [
+          ...history,
+          {
+            role: 'user',
+            content: `Contexto confiável do Conecta Social:\n${context}\n\nPergunta do usuário: ${query}`,
+          },
+        ],
+        max_output_tokens: 260,
+        temperature: 0.2,
+        top_p: 0.95,
+      },
+      {
+        headers: {
+          Authorization: `${this.maritacaAuthScheme} ${this.maritacaApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: this.maritacaTimeoutMs,
+      }
+    );
+
+    if (data?.status === 'failed') {
+      const errorMessage = data.error?.message ?? 'Falha retornada pela API';
+      throw new Error(errorMessage);
+    }
+
+    const text = this.extractTextFromResponsesApi(data);
+    return text?.trim() || null;
+  }
+
+  private extractTextFromResponsesApi(
+    payload: MaritacaResponsesApiBody
+  ): string | null {
+    if (!Array.isArray(payload?.output)) {
+      return null;
+    }
+
+    const textParts = payload.output
+      .filter((item) => item?.type === 'message')
+      .flatMap((item) => item.content ?? [])
+      .map((content) => content?.text ?? '')
+      .filter(Boolean);
+
+    if (textParts.length > 0) {
+      return textParts.join('\n').trim();
+    }
+
+    const topLevelText = payload.output
+      .map((item) => item.text ?? '')
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+
+    return topLevelText || null;
+  }
+
+  private buildFaqContext(references: FaqSearchResult[]): string {
+    if (!references.length) {
+      return [
+        '- Doações: chave PIX conectasocial@email.com e contato pelo WhatsApp.',
+        '- Voluntariado: contato via WhatsApp ou redes sociais.',
+        '- Horário: segunda a sexta, 10:00 às 16:00.',
+        '- Endereço: Rua Lorem Ipsum, 4923, Sorocaba - São Paulo - Brasil.',
+      ].join('\n');
+    }
+
+    return references
+      .map(
+        (reference, index) =>
+          `${index + 1}. Tema: ${reference.category}\nPergunta: ${
+            reference.question
+          }\nResposta: ${reference.answer}`
+      )
+      .join('\n\n');
+  }
+
+  private buildFallbackAnswer(faqResponse: FaqVoiceSearchResponse): string {
+    const best = faqResponse.results[0];
+    if (!best) {
+      return this.getFallbackResult().answer;
+    }
+
+    if (faqResponse.results.length === 1) {
+      return best.answer;
+    }
+
+    return `${best.answer}\n\nSe precisar, também posso ajudar com ${faqResponse.results
+      .slice(1, 3)
+      .map((result) => result.category)
+      .join(' e ')}.`;
+  }
+
+  private sanitizeHistory(
+    history: FaqChatHistoryMessage[]
+  ): FaqChatHistoryMessage[] {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history
+      .filter(
+        (message) =>
+          (message?.role === 'user' || message?.role === 'assistant') &&
+          typeof message.content === 'string' &&
+          message.content.trim().length > 0
+      )
+      .slice(-this.maxHistoryMessages)
+      .map((message) => ({
+        role: message.role,
+        content: message.content.trim().slice(0, 500),
+      }));
   }
 
   private getFallbackResult(): FaqSearchResult {
