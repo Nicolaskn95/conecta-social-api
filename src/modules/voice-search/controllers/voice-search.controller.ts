@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { FaqChatbotRequestDto } from '../dtos/faq-chatbot-request.dto';
 import { FaqVoiceSearchRequestDto } from '../dtos/faq-voice-search-request.dto';
 import { VoiceSearchService } from '../services/voice-search.service';
 
@@ -18,5 +19,17 @@ export class VoiceSearchController {
   })
   searchFaq(@Body() dto: FaqVoiceSearchRequestDto) {
     return this.voiceSearchService.searchFaq(dto.query);
+  }
+
+  @Post('chatbot')
+  @ApiOperation({
+    summary: 'Responder dúvidas da FAQ com LLM (Maritaca) e fallback local',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Resposta do chatbot com contexto da FAQ',
+  })
+  chatWithLlm(@Body() dto: FaqChatbotRequestDto) {
+    return this.voiceSearchService.chatFaq(dto.query, dto.history ?? []);
   }
 }

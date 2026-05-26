@@ -86,6 +86,19 @@ yarn install
 ### Configurar variáveis de ambiente
 Crie ou edite `.env` com as variáveis necessárias (ex.: DATABASE_URL, JWT_SECRET, JWT_EXPIRATION, PORT).
 
+### Variáveis para Chatbot LLM (Maritaca)
+Para habilitar respostas com LLM no endpoint público de FAQ, configure também:
+
+```bash
+MARITACA_API_KEY=<sua-chave>
+MARITACA_MODEL=sabia-4
+MARITACA_RESPONSES_URL=https://chat.maritaca.ai/api/v1/responses
+MARITACA_AUTH_SCHEME=Bearer
+MARITACA_TIMEOUT_MS=15000
+```
+
+Se `MARITACA_API_KEY` não estiver definida, a API continua funcionando com fallback local da FAQ.
+
 ### Gerar Prisma e executar migrations
 ```bash
 yarn prisma generate
@@ -138,6 +151,11 @@ docker compose down -v
 ## 🔐 Autenticação
 
 A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints protegidos requerem o header Authorization: Bearer <token>.
+
+## 🤖 Chatbot FAQ (público)
+
+- `POST /voice-search/faq`: busca local com PLN (intenção + ranking).
+- `POST /voice-search/chatbot`: resposta conversacional com Maritaca (LLM) e fallback automático para FAQ local em caso de indisponibilidade.
 
 ## 🐛 Troubleshooting (comum)
 

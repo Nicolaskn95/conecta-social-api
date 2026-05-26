@@ -2,9 +2,20 @@ import { VoiceSearchService } from './voice-search.service';
 
 describe('VoiceSearchService', () => {
   let service: VoiceSearchService;
+  const originalApiKey = process.env.MARITACA_API_KEY;
 
   beforeEach(() => {
+    delete process.env.MARITACA_API_KEY;
     service = new VoiceSearchService();
+  });
+
+  afterAll(() => {
+    if (originalApiKey) {
+      process.env.MARITACA_API_KEY = originalApiKey;
+      return;
+    }
+
+    delete process.env.MARITACA_API_KEY;
   });
 
   it('normalizes accents, punctuation and casing', () => {
@@ -39,5 +50,14 @@ describe('VoiceSearchService', () => {
     expect(response.intent).toBe('desconhecida');
     expect(response.results).toHaveLength(1);
     expect(response.results[0].id).toBe('faq-fallback');
+  });
+
+  it('returns faq fallback response when maritaca key is missing', async () => {
+    const response = await service.chatFaq('qual é a chave pix');
+
+    expect(response.source).toBe('faq_fallback');
+    expect(response.intent).toBe('pix');
+    expect(response.references[0].category).toBe('pix');
+    expect(response.answer).toContain('chave PIX');
   });
 });
