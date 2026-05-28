@@ -19,6 +19,15 @@ enum EventStatus {
   CANCELED
 }
 
+enum DonationStockAdjustmentReason {
+  SPOILAGE
+  LOSS
+  DAMAGE
+  EXPIRATION
+  INVENTORY_CORRECTION
+  OTHER
+}
+
 model Employee {
   id           String   @id @default(uuid())
   name         String   @db.VarChar(30)
@@ -44,6 +53,7 @@ model Employee {
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
   logs LogEmployeeEvent[]
+  donation_stock_adjustments DonationStockAdjustment[]
 
   @@map("employees")
 }
@@ -136,6 +146,7 @@ model Donation {
   
   category         Category  @relation(fields: [category_id], references: [id])
   donations_to_family DonationToFamily[]
+  stock_adjustments DonationStockAdjustment[]
 
   @@map("donations")
 }
@@ -156,4 +167,23 @@ model DonationToFamily {
   @@index([id_donation])
   @@index([id_family])
   @@map("donations_to_family")
+}
+
+model DonationStockAdjustment {
+  id                String   @id @default(uuid())
+  id_donation       String
+  id_employee       String
+  delta_quantity    Int
+  previous_quantity Int
+  new_quantity      Int
+  reason            DonationStockAdjustmentReason
+  note              String?  @db.VarChar(500)
+  created_at        DateTime @default(now())
+
+  donation          Donation @relation(fields: [id_donation], references: [id])
+  employee          Employee @relation(fields: [id_employee], references: [id])
+
+  @@index([id_donation, created_at])
+  @@index([id_employee, created_at])
+  @@map("donation_stock_adjustments")
 }

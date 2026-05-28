@@ -7,11 +7,17 @@ import {
 import { DonationRepository } from '../repositories/donation.repository';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
+import { CreateDonationStockAdjustmentDto } from '../dtos/create-donation-stock-adjustment.dto';
 import {
   DonationImageMetadata,
   DonationImageService,
 } from './donation-image.service';
-import { Employee, EmployeeRole } from '@prisma/client';
+import {
+  DonationStockAdjustmentReason,
+  Employee,
+  EmployeeRole,
+} from '@prisma/client';
+import { PrismaService } from '@/config/prisma/prisma.service';
 
 type DonationWithImage = {
   image_key?: string | null;
@@ -22,7 +28,8 @@ type DonationWithImage = {
 export class DonationService {
   constructor(
     private readonly donationRepository: DonationRepository,
-    private readonly donationImageService: DonationImageService
+    private readonly donationImageService: DonationImageService,
+    private readonly prisma: PrismaService
   ) {}
 
   async create(
@@ -109,6 +116,117 @@ export class DonationService {
     });
 
     return this.withSignedImageUrl(donation);
+  }
+
+  async adjustStock(
+    id: string,
+    dto: CreateDonationStockAdjustmentDto,
+    actor: Employee
+  ) {
+    if (!actor?.id) {
+      throw new ForbiddenException(
+        'Usuário autenticado não encontrado para registrar o ajuste.'
+      );
+    }
+
+    if (
+      actor.role !== EmployeeRole.ADMIN &&
+      actor.role !== EmployeeRole.MANAGER
+    ) {
+      throw new ForbiddenException(
+        'Apenas ADMIN e MANAGER podem ajustar estoque.'
+      );
+    }
+
+    if (dto.delta_quantity === 0) {
+      throw new BadRequestException(
+        'O delta de estoque deve ser diferente de zero.'
+      );
+    }
+
+    const normalizedNote = dto.note?.trim();
+    if (
+      dto.reason === DonationStockAdjustmentReason.OTHER &&
+      !normalizedNote
+    ) {
+      throw new BadRequestException(
+        'A observação é obrigatória quando o motivo for OTHER.'
+      );
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const donation = await tx.donation.findFirst({
+        where: { id, active: true },
+        include: { category: true },
+      });
+
+      if (!donation) {
+        throw new NotFoundException('Doação não encontrada');
+      }
+
+      const newQuantity = donation.current_quantity + dto.delta_quantity;
+      if (newQuantity < 0) {
+        throw new BadRequestException(
+          'O ajuste informado deixaria o estoque negativo.'
+        );
+      }
+
+      const updatedDonation = await tx.donation.update({
+        where: { id: donation.id },
+        data: {
+          current_quantity: newQuantity,
+          available: newQuantity > 0,
+        },
+        include: {
+          category: true,
+        },
+      });
+
+      const adjustment = await tx.donationStockAdjustment.create({
+        data: {
+          id_donation: donation.id,
+          id_employee: actor.id,
+          delta_quantity: dto.delta_quantity,
+          previous_quantity: donation.current_quantity,
+          new_quantity: newQuantity,
+          reason: dto.reason,
+          note: normalizedNote ?? null,
+        },
+      });
+
+      return {
+        adjustment,
+        donation: updatedDonation,
+      };
+    });
+
+    return {
+      adjustment: result.adjustment,
+      donation: await this.withSignedImageUrl(result.donation),
+    };
+  }
+
+  async findStockAdjustments(id: string) {
+    await this.getActiveDonationOrThrow(id);
+
+    return this.prisma.donationStockAdjustment.findMany({
+      where: {
+        id_donation: id,
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            surname: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
   }
 
   async delete(id: string) {
