@@ -54,6 +54,11 @@ export class DonationService {
     return this.withSignedImageUrls(donations);
   }
 
+  async findAllWithStock() {
+    const donations = await this.donationRepository.findAllWithStock();
+    return this.withSignedImageUrls(donations);
+  }
+
   async findAllPaginated(page = 1, size = 10) {
     const skip = (page - 1) * size;
 

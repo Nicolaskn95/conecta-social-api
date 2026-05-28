@@ -8,6 +8,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { FamilyModule } from './modules/family/family.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DonationModule } from './modules/donation/donation.module';
+import { DonationToFamilyModule } from './modules/donation-to-family/donation-to-family.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
@@ -22,6 +23,7 @@ import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
     FamilyModule,
     CategoryModule,
     DonationModule,
+    DonationToFamilyModule,
     DashboardModule,
     ResourcesModule,
     VoiceSearchModule,

@@ -47,6 +47,21 @@ export class DonationRepository {
     });
   }
 
+  async findAllWithStock() {
+    return this.prisma.donation.findMany({
+      where: {
+        active: true,
+        available: true,
+        current_quantity: {
+          gt: 0,
+        },
+      },
+      include: {
+        category: true,
+      },
+    });
+  }
+
   async findById(id: string) {
     return this.prisma.donation.findFirst({
       where: { id, active: true },

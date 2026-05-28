@@ -66,6 +66,7 @@ async function main() {
     { name: 'Calçados', measure_unity: 'UN' },
     { name: 'Higiene pessoal', measure_unity: 'UN' },
     { name: 'Limpeza', measure_unity: 'UN' },
+    { name: 'Variados', measure_unity: 'UN' },
   ];
 
   for (const category of defaultCategories) {
@@ -76,10 +77,10 @@ async function main() {
     if (existing) {
       await prisma.category.update({
         where: { id: existing.id },
-        data: { ...category },
+        data: { ...category, active: true },
       });
     } else {
-      await prisma.category.create({ data: { ...category } });
+      await prisma.category.create({ data: { ...category, active: true } });
     }
   }
 
