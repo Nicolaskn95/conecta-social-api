@@ -69,9 +69,10 @@ export class DonationController {
   @ApiResponse({ status: 201, description: 'Doação criada com sucesso' })
   create(
     @Body() createDonationDto: CreateDonationDto,
-    @UploadedFile() image?: Express.Multer.File
+    @UploadedFile() image?: Express.Multer.File,
+    @LoggedUser() employee?: Employee
   ) {
-    return this.donationService.create(createDonationDto, image);
+    return this.donationService.create(createDonationDto, image, employee);
   }
 
   @Get()
@@ -204,7 +205,7 @@ export class DonationController {
   @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deletar uma doação' })
-  delete(@Param('id') id: string) {
-    return this.donationService.delete(id);
+  delete(@Param('id') id: string, @LoggedUser() employee?: Employee) {
+    return this.donationService.delete(id, employee);
   }
 }

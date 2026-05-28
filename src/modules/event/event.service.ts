@@ -9,18 +9,41 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventBasicDto } from './dto/update-event-basic.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
 import { InstagramContentService } from './services/instagram-content.service';
-import { Employee, EmployeeRole, EventStatus } from '@prisma/client';
+import {
+  AuditActionType,
+  AuditEntityType,
+  Employee,
+  EmployeeRole,
+  EventStatus,
+} from '@prisma/client';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 @Injectable()
 export class EventService {
   constructor(
     private prisma: PrismaService,
-    private instagramContentService: InstagramContentService
+    private instagramContentService: InstagramContentService,
+    private readonly auditLogService: AuditLogService
   ) {}
 
-  async create(dto: CreateEventDto) {
+  async create(dto: CreateEventDto, actor?: Employee) {
     const eventData = await this.prepareEventData(dto);
-    return this.prisma.event.create({ data: eventData });
+    const event = await this.prisma.event.create({ data: eventData });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: event.id,
+      actionType: AuditActionType.CREATE,
+      actor,
+      message: 'Evento criado.',
+      metadata: {
+        name: event.name,
+        date: new Date(event.date).toISOString(),
+        status: event.status,
+      },
+    });
+
+    return event;
   }
 
   private async prepareEventData(dto: CreateEventDto) {
@@ -57,16 +80,29 @@ export class EventService {
     return event;
   }
 
-  async update(id: string, dto: UpdateEventBasicDto) {
+  async update(id: string, dto: UpdateEventBasicDto, actor?: Employee) {
     await this.findOne(id);
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id },
       data: {
         ...dto,
         date: dto.date ? new Date(dto.date) : undefined,
       },
     });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: id,
+      actionType: AuditActionType.UPDATE,
+      actor,
+      message: 'Evento atualizado.',
+      metadata: {
+        updated_fields: Object.keys(dto),
+      },
+    });
+
+    return event;
   }
 
   async updateStatus(id: string, status: EventStatus, actor: Employee) {
@@ -78,41 +114,94 @@ export class EventService {
       );
     }
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id },
       data: { status },
     });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: id,
+      actionType: AuditActionType.UPDATE_STATUS,
+      actor,
+      message: 'Status do evento atualizado.',
+      metadata: {
+        status,
+      },
+    });
+
+    return event;
   }
 
-  async updateAttendance(id: string, attendance: number) {
+  async updateAttendance(id: string, attendance: number, actor?: Employee) {
     await this.findOne(id);
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id },
       data: { attendance },
     });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: id,
+      actionType: AuditActionType.UPDATE_ATTENDANCE,
+      actor,
+      message: 'Presença do evento atualizada.',
+      metadata: {
+        attendance,
+      },
+    });
+
+    return event;
   }
 
-  async updateInstagram(id: string, embeddedInstagram?: string) {
+  async updateInstagram(
+    id: string,
+    embeddedInstagram?: string,
+    actor?: Employee
+  ) {
     await this.findOne(id);
 
     const normalizedInstagram = embeddedInstagram
       ? this.instagramContentService.validateUrl(embeddedInstagram)
       : null;
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id },
       data: { embedded_instagram: normalizedInstagram },
     });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: id,
+      actionType: AuditActionType.UPDATE_INSTAGRAM,
+      actor,
+      message: 'Post do Instagram do evento atualizado.',
+      metadata: {
+        embedded_instagram: normalizedInstagram,
+      },
+    });
+
+    return event;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actor?: Employee) {
     await this.findOne(id);
 
-    return this.prisma.event.update({
+    const event = await this.prisma.event.update({
       where: { id },
       data: { active: false },
     });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.EVENT,
+      entityId: id,
+      actionType: AuditActionType.SOFT_DELETE,
+      actor,
+      message: 'Evento desativado.',
+    });
+
+    return event;
   }
 
   async getUpcomingEvents(limit?: number) {

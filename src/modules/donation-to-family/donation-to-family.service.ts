@@ -3,14 +3,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditActionType, AuditEntityType, Employee } from '@prisma/client';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateDonationToFamilyDto } from './dto/create-donation-to-family.dto';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 @Injectable()
 export class DonationToFamilyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogService: AuditLogService
+  ) {}
 
-  async create(dto: CreateDonationToFamilyDto) {
+  async create(dto: CreateDonationToFamilyDto, actor?: Employee) {
     if (dto.quantity <= 0) {
       throw new BadRequestException('A quantidade deve ser maior que zero.');
     }
@@ -19,7 +24,7 @@ export class DonationToFamilyService {
       const [donation, family] = await Promise.all([
         tx.donation.findFirst({
           where: { id: dto.id_donation, active: true },
-          select: { id: true },
+          select: { id: true, current_quantity: true },
         }),
         tx.family.findFirst({
           where: { id: dto.id_family, active: true },
@@ -66,7 +71,7 @@ export class DonationToFamilyService {
         },
       });
 
-      return tx.donationToFamily.create({
+      const donationToFamily = await tx.donationToFamily.create({
         data: {
           ...dto,
         },
@@ -79,6 +84,24 @@ export class DonationToFamilyService {
           family: true,
         },
       });
+
+      await this.auditLogService.write({
+        tx,
+        entityType: AuditEntityType.DONATION_TO_FAMILY,
+        entityId: donationToFamily.id,
+        actionType: AuditActionType.ALLOCATE_TO_FAMILY,
+        actor,
+        message: 'Doação destinada para família.',
+        metadata: {
+          donation_id: dto.id_donation,
+          family_id: dto.id_family,
+          quantity: dto.quantity,
+          previous_quantity: donation.current_quantity,
+          new_quantity: donationAfterUpdate?.current_quantity ?? null,
+        },
+      });
+
+      return donationToFamily;
     });
   }
 

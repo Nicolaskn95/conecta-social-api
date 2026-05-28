@@ -7,10 +7,12 @@ import { DonationService } from './donation.service';
 import { DonationRepository } from '../repositories/donation.repository';
 import { DonationImageService } from './donation-image.service';
 import { DonationStockAdjustmentReason, EmployeeRole } from '@prisma/client';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 describe('DonationService', () => {
   let repository: jest.Mocked<DonationRepository>;
   let imageService: jest.Mocked<DonationImageService>;
+  let auditLogService: jest.Mocked<AuditLogService>;
   let prisma: any;
   let tx: {
     donation: {
@@ -57,13 +59,17 @@ describe('DonationService', () => {
         findMany: jest.fn(),
       },
     } as any;
+    auditLogService = {
+      write: jest.fn(),
+    } as any;
 
     imageService.getSignedImageUrl.mockResolvedValue(null);
 
     service = new DonationService(
       repository as any,
       imageService as any,
-      prisma as any
+      prisma as any,
+      auditLogService as any
     );
   });
 

@@ -13,11 +13,14 @@ import {
   DonationImageService,
 } from './donation-image.service';
 import {
+  AuditActionType,
+  AuditEntityType,
   DonationStockAdjustmentReason,
   Employee,
   EmployeeRole,
 } from '@prisma/client';
 import { PrismaService } from '@/config/prisma/prisma.service';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 type DonationWithImage = {
   image_key?: string | null;
@@ -29,12 +32,14 @@ export class DonationService {
   constructor(
     private readonly donationRepository: DonationRepository,
     private readonly donationImageService: DonationImageService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly auditLogService: AuditLogService
   ) {}
 
   async create(
     createDonationDto: CreateDonationDto,
-    image?: Express.Multer.File
+    image?: Express.Multer.File,
+    actor?: Employee
   ) {
     if (createDonationDto.initial_quantity <= 0) {
       throw new BadRequestException(
@@ -46,6 +51,19 @@ export class DonationService {
     const donation = await this.donationRepository.create({
       ...createDonationDto,
       ...imageMetadata,
+    });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.DONATION,
+      entityId: donation.id,
+      actionType: AuditActionType.CREATE,
+      actor,
+      message: 'Doação criada.',
+      metadata: {
+        name: donation.name,
+        category_id: donation.category_id,
+        initial_quantity: donation.initial_quantity,
+      },
     });
 
     return this.withSignedImageUrl(donation);
@@ -113,6 +131,18 @@ export class DonationService {
     const donation = await this.donationRepository.update(id, {
       ...updateDonationDto,
       ...imageMetadata,
+    });
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.DONATION,
+      entityId: donation.id,
+      actionType: AuditActionType.UPDATE,
+      actor,
+      message: 'Doação atualizada.',
+      metadata: {
+        updated_fields: Object.keys(updateDonationDto),
+        image_updated: Boolean(image),
+      },
     });
 
     return this.withSignedImageUrl(donation);
@@ -194,6 +224,22 @@ export class DonationService {
         },
       });
 
+      await this.auditLogService.write({
+        tx,
+        entityType: AuditEntityType.DONATION,
+        entityId: donation.id,
+        actionType: AuditActionType.STOCK_ADJUSTMENT,
+        actor,
+        message: 'Ajuste de estoque registrado.',
+        metadata: {
+          delta_quantity: dto.delta_quantity,
+          previous_quantity: donation.current_quantity,
+          new_quantity: newQuantity,
+          reason: dto.reason,
+          note: normalizedNote ?? null,
+        },
+      });
+
       return {
         adjustment,
         donation: updatedDonation,
@@ -229,9 +275,17 @@ export class DonationService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, actor?: Employee) {
     await this.getActiveDonationOrThrow(id);
     await this.donationRepository.delete(id);
+
+    await this.auditLogService.write({
+      entityType: AuditEntityType.DONATION,
+      entityId: id,
+      actionType: AuditActionType.SOFT_DELETE,
+      actor,
+      message: 'Doação desativada.',
+    });
   }
 
   private async getActiveDonationOrThrow(id: string) {
