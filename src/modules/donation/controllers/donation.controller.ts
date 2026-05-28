@@ -80,6 +80,18 @@ export class DonationController {
     return this.donationService.findAllActives();
   }
 
+  @Get('with-stock')
+  @ApiOperation({
+    summary: 'Listar doações ativas com estoque disponível',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de doações com quantidade disponível no estoque.',
+  })
+  findAllWithStock() {
+    return this.donationService.findAllWithStock();
+  }
+
   @Get('paginated')
   @ApiOperation({ summary: 'Listar doações com paginação' })
   @ApiResponse({

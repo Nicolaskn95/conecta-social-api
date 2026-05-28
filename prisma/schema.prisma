@@ -100,6 +100,7 @@ model Family {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   active        Boolean  @default(true)
+  donations_to_family DonationToFamily[]
 
   @@map("families")
 }
@@ -134,6 +135,25 @@ model Donation {
   updated_at       DateTime  @updatedAt
   
   category         Category  @relation(fields: [category_id], references: [id])
+  donations_to_family DonationToFamily[]
 
   @@map("donations")
+}
+
+model DonationToFamily {
+  id             String   @id @default(uuid())
+  id_donation    String
+  id_family      String
+  quantity       Int
+  update_message String?  @db.VarChar(250)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  active         Boolean  @default(true)
+
+  donation       Donation @relation(fields: [id_donation], references: [id])
+  family         Family   @relation(fields: [id_family], references: [id])
+
+  @@index([id_donation])
+  @@index([id_family])
+  @@map("donations_to_family")
 }
