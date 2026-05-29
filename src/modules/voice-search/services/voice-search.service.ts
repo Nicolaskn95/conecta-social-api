@@ -12,15 +12,38 @@ type FaqIntent =
   | 'pix'
   | 'desconhecida';
 
+type KnownFaqIntent = Exclude<FaqIntent, 'desconhecida'>;
 type ChatbotSource = 'llm' | 'faq_fallback';
 type FaqChatHistoryRole = 'user' | 'assistant';
 
 interface FaqItem {
   id: string;
-  category: Exclude<FaqIntent, 'desconhecida'>;
+  category: KnownFaqIntent;
   question: string;
   answer: string;
   keywords: string[];
+}
+
+interface IntentTrainingSample {
+  intent: KnownFaqIntent;
+  text: string;
+}
+
+interface BinarySvmModel {
+  weights: number[];
+  bias: number;
+}
+
+interface TfIdfVectorizerArtifacts {
+  vocabulary: string[];
+  tokenIndex: Map<string, number>;
+  idf: number[];
+}
+
+interface IntentPrediction {
+  intent: KnownFaqIntent;
+  score: number;
+  margin: number;
 }
 
 export interface FaqSearchResult {
@@ -171,15 +194,49 @@ const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-const INTENT_KEYWORDS: Record<Exclude<FaqIntent, 'desconhecida'>, string[]> = {
-  doacao: ['doacao', 'doar', 'doacoes', 'roupas', 'alimentos', 'ajudar'],
-  voluntariado: ['voluntario', 'voluntaria', 'voluntariado', 'participar'],
-  eventos: ['evento', 'eventos', 'calendario', 'agenda', 'proximos'],
-  localizacao: ['endereco', 'localizacao', 'local', 'rua', 'mapa', 'onde'],
-  contato: ['contato', 'telefone', 'whatsapp', 'redes', 'instagram'],
-  horario: ['horario', 'funcionamento', 'abre', 'fecha', 'segunda', 'sexta'],
-  pix: ['pix', 'chave', 'pagamento', 'transferencia'],
-};
+const INTENT_TRAINING_SAMPLES: IntentTrainingSample[] = [
+  { intent: 'doacao', text: 'como faço uma doação' },
+  { intent: 'doacao', text: 'quero doar roupas' },
+  { intent: 'doacao', text: 'gostaria de doar alimentos' },
+  { intent: 'doacao', text: 'como contribuir com doações' },
+  { intent: 'doacao', text: 'aceitam doações de itens' },
+
+  { intent: 'pix', text: 'qual é a chave pix' },
+  { intent: 'pix', text: 'me passe a chave de pagamento' },
+  { intent: 'pix', text: 'como fazer doação no pix' },
+  { intent: 'pix', text: 'qual pix para transferir' },
+  { intent: 'pix', text: 'quero pagar por pix' },
+
+  { intent: 'voluntariado', text: 'quero ser voluntário' },
+  { intent: 'voluntariado', text: 'como participar como voluntária' },
+  { intent: 'voluntariado', text: 'tenho interesse em voluntariado' },
+  { intent: 'voluntariado', text: 'como posso ajudar como voluntário' },
+  { intent: 'voluntariado', text: 'como entro para equipe voluntária' },
+
+  { intent: 'eventos', text: 'quais são os próximos eventos' },
+  { intent: 'eventos', text: 'onde vejo o calendário de ações' },
+  { intent: 'eventos', text: 'agenda de eventos do projeto' },
+  { intent: 'eventos', text: 'datas dos eventos sociais' },
+  { intent: 'eventos', text: 'como acompanhar os eventos' },
+
+  { intent: 'localizacao', text: 'onde fica o projeto' },
+  { intent: 'localizacao', text: 'qual é o endereço' },
+  { intent: 'localizacao', text: 'como chegar no local' },
+  { intent: 'localizacao', text: 'tem mapa da localização' },
+  { intent: 'localizacao', text: 'qual rua da organização' },
+
+  { intent: 'contato', text: 'como entro em contato' },
+  { intent: 'contato', text: 'qual o telefone de vocês' },
+  { intent: 'contato', text: 'me passa o whatsapp' },
+  { intent: 'contato', text: 'quais redes sociais da ong' },
+  { intent: 'contato', text: 'contato para falar com equipe' },
+
+  { intent: 'horario', text: 'qual horário de funcionamento' },
+  { intent: 'horario', text: 'que horas abre' },
+  { intent: 'horario', text: 'que horas fecha' },
+  { intent: 'horario', text: 'funciona segunda a sexta' },
+  { intent: 'horario', text: 'horário de atendimento' },
+];
 
 @Injectable()
 export class VoiceSearchService {
@@ -197,6 +254,32 @@ export class VoiceSearchService {
     process.env.MARITACA_TIMEOUT_MS ?? 15000
   );
   private readonly maxHistoryMessages = 6;
+
+  private readonly knownIntents: KnownFaqIntent[] = [
+    'doacao',
+    'pix',
+    'voluntariado',
+    'eventos',
+    'localizacao',
+    'contato',
+    'horario',
+  ];
+
+  private readonly svmEpochs = 120;
+  private readonly svmLambda = 0.01;
+  private readonly svmLearningRate = 0.1;
+  private readonly minIntentScore = 0.05;
+  private readonly minIntentMargin = 0.02;
+
+  private intentVectorizer: TfIdfVectorizerArtifacts;
+  private semanticVectorizer: TfIdfVectorizerArtifacts;
+  private svmModels: Record<KnownFaqIntent, BinarySvmModel>;
+  private semanticFaqVectors: number[][];
+
+  constructor() {
+    this.trainIntentClassifier();
+    this.buildSemanticFaqIndex();
+  }
 
   searchFaq(query: string): FaqVoiceSearchResponse {
     const normalizedQuery = this.normalize(query);
@@ -277,34 +360,257 @@ export class VoiceSearchService {
       .filter((token) => token.length > 1 && !this.stopwords.has(token));
   }
 
-  private classifyIntent(tokens: string[]): FaqIntent {
-    const scores = Object.entries(INTENT_KEYWORDS).map(
-      ([intent, keywords]) => ({
-        intent: intent as Exclude<FaqIntent, 'desconhecida'>,
-        score: tokens.filter((token) => keywords.includes(token)).length,
-      })
+  private trainIntentClassifier() {
+    const trainingSamples = this.prepareIntentTrainingSamples();
+    const tokenizedDocuments = trainingSamples.map((sample) => sample.tokens);
+
+    this.intentVectorizer = this.createTfidfVectorizer(tokenizedDocuments);
+
+    const trainingVectors = tokenizedDocuments.map((tokens) =>
+      this.vectorizeTokens(tokens, this.intentVectorizer)
     );
 
-    const best = scores.sort((a, b) => b.score - a.score)[0];
-    return best && best.score > 0 ? best.intent : 'desconhecida';
+    const labels = trainingSamples.map((sample) => sample.intent);
+    this.svmModels = this.trainOneVsRestSvm(trainingVectors, labels);
+  }
+
+  private prepareIntentTrainingSamples() {
+    const rawSamples: IntentTrainingSample[] = [...INTENT_TRAINING_SAMPLES];
+
+    // Reinforce each intent using curated FAQ questions from the project domain.
+    FAQ_ITEMS.forEach((faq) => {
+      rawSamples.push({
+        intent: faq.category,
+        text: faq.question,
+      });
+    });
+
+    return rawSamples
+      .map((sample) => ({
+        intent: sample.intent,
+        tokens: this.tokenize(this.normalize(sample.text)),
+      }))
+      .filter((sample) => sample.tokens.length > 0);
+  }
+
+  private buildSemanticFaqIndex() {
+    const semanticDocs = FAQ_ITEMS.map((faq) =>
+      this.tokenize(
+        this.normalize(`${faq.question} ${faq.answer} ${faq.keywords.join(' ')}`)
+      )
+    );
+
+    this.semanticVectorizer = this.createTfidfVectorizer(semanticDocs);
+    this.semanticFaqVectors = semanticDocs.map((tokens) =>
+      this.vectorizeTokens(tokens, this.semanticVectorizer)
+    );
+  }
+
+  private createTfidfVectorizer(
+    tokenizedDocuments: string[][]
+  ): TfIdfVectorizerArtifacts {
+    const tokenDocumentFrequency = new Map<string, number>();
+
+    tokenizedDocuments.forEach((tokens) => {
+      const uniqueTokens = new Set(tokens);
+      uniqueTokens.forEach((token) => {
+        tokenDocumentFrequency.set(
+          token,
+          (tokenDocumentFrequency.get(token) ?? 0) + 1
+        );
+      });
+    });
+
+    const vocabulary = Array.from(tokenDocumentFrequency.keys()).sort();
+    const tokenIndex = new Map<string, number>();
+
+    vocabulary.forEach((token, index) => {
+      tokenIndex.set(token, index);
+    });
+
+    const documentCount = tokenizedDocuments.length;
+    const idf = vocabulary.map((token) => {
+      const df = tokenDocumentFrequency.get(token) ?? 0;
+      return Math.log((1 + documentCount) / (1 + df)) + 1;
+    });
+
+    return {
+      vocabulary,
+      tokenIndex,
+      idf,
+    };
+  }
+
+  private vectorizeTokens(
+    tokens: string[],
+    vectorizer: TfIdfVectorizerArtifacts
+  ): number[] {
+    const vector = new Array(vectorizer.vocabulary.length).fill(0);
+
+    if (!tokens.length || !vectorizer.vocabulary.length) {
+      return vector;
+    }
+
+    const termFrequency = new Map<string, number>();
+
+    tokens.forEach((token) => {
+      if (vectorizer.tokenIndex.has(token)) {
+        termFrequency.set(token, (termFrequency.get(token) ?? 0) + 1);
+      }
+    });
+
+    const totalTerms = Array.from(termFrequency.values()).reduce(
+      (accumulator, value) => accumulator + value,
+      0
+    );
+
+    if (totalTerms === 0) {
+      return vector;
+    }
+
+    termFrequency.forEach((count, token) => {
+      const tokenIndex = vectorizer.tokenIndex.get(token);
+      if (tokenIndex === undefined) {
+        return;
+      }
+
+      const tf = count / totalTerms;
+      vector[tokenIndex] = tf * vectorizer.idf[tokenIndex];
+    });
+
+    return this.normalizeVector(vector);
+  }
+
+  private normalizeVector(vector: number[]): number[] {
+    const magnitude = Math.sqrt(
+      vector.reduce((accumulator, value) => accumulator + value * value, 0)
+    );
+
+    if (magnitude === 0) {
+      return vector;
+    }
+
+    return vector.map((value) => value / magnitude);
+  }
+
+  private trainOneVsRestSvm(
+    trainingVectors: number[][],
+    labels: KnownFaqIntent[]
+  ) {
+    const featureCount = this.intentVectorizer.vocabulary.length;
+    const models = {} as Record<KnownFaqIntent, BinarySvmModel>;
+
+    this.knownIntents.forEach((intent) => {
+      const weights = new Array(featureCount).fill(0);
+      let bias = 0;
+
+      for (let epoch = 0; epoch < this.svmEpochs; epoch += 1) {
+        const learningRate =
+          this.svmLearningRate / (1 + epoch * this.svmLambda * 10);
+
+        for (let sampleIndex = 0; sampleIndex < trainingVectors.length; sampleIndex += 1) {
+          const vector = trainingVectors[sampleIndex];
+          const target = labels[sampleIndex] === intent ? 1 : -1;
+          const score = this.dotProduct(weights, vector) + bias;
+          const margin = target * score;
+
+          for (let featureIndex = 0; featureIndex < weights.length; featureIndex += 1) {
+            weights[featureIndex] =
+              weights[featureIndex] * (1 - learningRate * this.svmLambda);
+
+            if (margin < 1) {
+              weights[featureIndex] +=
+                learningRate * target * vector[featureIndex];
+            }
+          }
+
+          if (margin < 1) {
+            bias += learningRate * target;
+          }
+        }
+      }
+
+      models[intent] = {
+        weights,
+        bias,
+      };
+    });
+
+    return models;
+  }
+
+  private classifyIntent(tokens: string[]): FaqIntent {
+    const prediction = this.predictIntent(tokens);
+
+    if (!prediction) {
+      return 'desconhecida';
+    }
+
+    if (
+      prediction.score < this.minIntentScore ||
+      prediction.margin < this.minIntentMargin
+    ) {
+      return 'desconhecida';
+    }
+
+    return prediction.intent;
+  }
+
+  private predictIntent(tokens: string[]): IntentPrediction | null {
+    if (!tokens.length) {
+      return null;
+    }
+
+    const queryVector = this.vectorizeTokens(tokens, this.intentVectorizer);
+    const vectorMagnitude = Math.sqrt(
+      queryVector.reduce((accumulator, value) => accumulator + value * value, 0)
+    );
+
+    if (vectorMagnitude === 0) {
+      return null;
+    }
+
+    const rankedScores = this.knownIntents
+      .map((intent) => {
+        const model = this.svmModels[intent];
+        return {
+          intent,
+          score: this.dotProduct(model.weights, queryVector) + model.bias,
+        };
+      })
+      .sort((first, second) => second.score - first.score);
+
+    const best = rankedScores[0];
+    const secondBestScore = rankedScores[1]?.score ?? -Infinity;
+
+    return {
+      intent: best.intent,
+      score: best.score,
+      margin: best.score - secondBestScore,
+    };
   }
 
   private rankFaqs(tokens: string[], intent: FaqIntent): FaqSearchResult[] {
-    return FAQ_ITEMS.map((faq) => {
-      const questionTokens = this.tokenize(this.normalize(faq.question));
-      const answerTokens = this.tokenize(this.normalize(faq.answer));
-      const keywordScore = tokens.filter((token) =>
-        faq.keywords.includes(token)
-      ).length;
-      const questionScore = tokens.filter((token) =>
-        questionTokens.includes(token)
-      ).length;
-      const answerScore = tokens.filter((token) =>
-        answerTokens.includes(token)
-      ).length;
-      const intentScore = intent === faq.category ? 2 : 0;
-      const score =
-        keywordScore * 3 + questionScore * 2 + answerScore + intentScore;
+    if (!tokens.length) {
+      return [];
+    }
+
+    const queryVector = this.vectorizeTokens(tokens, this.semanticVectorizer);
+    const queryMagnitude = Math.sqrt(
+      queryVector.reduce((accumulator, value) => accumulator + value * value, 0)
+    );
+
+    if (queryMagnitude === 0) {
+      return [];
+    }
+
+    return FAQ_ITEMS.map((faq, index) => {
+      const semanticScore = this.dotProduct(queryVector, this.semanticFaqVectors[index]);
+      const intentBoost = intent === faq.category ? 0.25 : 0;
+      const keywordBoost = tokens.some((token) => faq.keywords.includes(token))
+        ? 0.1
+        : 0;
+      const score = semanticScore + intentBoost + keywordBoost;
 
       return {
         id: faq.id,
@@ -314,8 +620,19 @@ export class VoiceSearchService {
         score,
       };
     })
-      .filter((faq) => faq.score > 0)
-      .sort((a, b) => b.score - a.score);
+      .filter((faq) => faq.score > 0.05)
+      .sort((first, second) => second.score - first.score);
+  }
+
+  private dotProduct(firstVector: number[], secondVector: number[]) {
+    const maxIndex = Math.min(firstVector.length, secondVector.length);
+    let accumulator = 0;
+
+    for (let index = 0; index < maxIndex; index += 1) {
+      accumulator += firstVector[index] * secondVector[index];
+    }
+
+    return accumulator;
   }
 
   private async generateMaritacaReply(

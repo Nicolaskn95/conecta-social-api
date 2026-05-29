@@ -154,8 +154,11 @@ A API usa JWT. Configure `JWT_SECRET` e `JWT_EXPIRATION` no `.env`. Endpoints pr
 
 ## 🤖 Chatbot FAQ (público)
 
-- `POST /voice-search/faq`: busca local com PLN (intenção + ranking).
-- `POST /voice-search/chatbot`: resposta conversacional com Maritaca (LLM) e fallback automático para FAQ local em caso de indisponibilidade.
+- `POST /voice-search/faq`: chatbot baseado em regras com:
+  - representação textual em TF-IDF;
+  - classificação de intenção via SVM linear (one-vs-rest);
+  - ranking semântico das respostas usando similaridade do vetor TF-IDF.
+- `POST /voice-search/chatbot`: usa o mesmo classificador TF-IDF + SVM para recuperar contexto e, opcionalmente, gera resposta conversacional com Maritaca (fallback automático para resposta local da FAQ).
 
 ## 🐛 Troubleshooting (comum)
 
