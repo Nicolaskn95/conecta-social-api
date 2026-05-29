@@ -23,6 +23,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { DonationService } from '../services/donation.service';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
+import { CreateDonationStockAdjustmentDto } from '../dtos/create-donation-stock-adjustment.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
@@ -144,13 +145,10 @@ export class DonationController {
         category_id: { type: 'string', format: 'uuid' },
         name: { type: 'string' },
         description: { type: 'string' },
-        initial_quantity: { type: 'number' },
-        current_quantity: { type: 'number' },
         donator_name: { type: 'string' },
         gender: { type: 'string' },
         size: { type: 'string' },
         active: { type: 'boolean' },
-        available: { type: 'boolean' },
         image: { type: 'string', format: 'binary' },
       },
     },
@@ -162,6 +160,44 @@ export class DonationController {
     @LoggedUser() employee?: Employee
   ) {
     return this.donationService.update(id, updateDonationDto, image, employee);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)
+  @Post(':id/stock-adjustments')
+  @ApiOperation({
+    summary:
+      'Ajustar estoque de uma doação com motivo padronizado e observação opcional',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Ajuste realizado com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Delta inválido, motivo inválido, observação ausente para OTHER ou estoque negativo.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Apenas ADMIN e MANAGER podem ajustar estoque.',
+  })
+  adjustStock(
+    @Param('id') id: string,
+    @Body() dto: CreateDonationStockAdjustmentDto,
+    @LoggedUser() employee: Employee
+  ) {
+    return this.donationService.adjustStock(id, dto, employee);
+  }
+
+  @Get(':id/stock-adjustments')
+  @ApiOperation({ summary: 'Listar histórico de ajustes de estoque da doação' })
+  @ApiResponse({
+    status: 200,
+    description: 'Histórico de ajustes de estoque da doação.',
+  })
+  findStockAdjustments(@Param('id') id: string) {
+    return this.donationService.findStockAdjustments(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -14,13 +14,10 @@ describe('UpdateDonationDto', () => {
       category_id: '',
       name: '',
       description: '',
-      initial_quantity: '',
-      current_quantity: '',
       donator_name: '',
       gender: '',
       size: '',
       active: '',
-      available: '',
     });
 
     await expect(validate(dto)).resolves.toHaveLength(0);
@@ -29,29 +26,39 @@ describe('UpdateDonationDto', () => {
         category_id: undefined,
         name: undefined,
         description: undefined,
-        initial_quantity: undefined,
-        current_quantity: undefined,
         donator_name: undefined,
         gender: undefined,
         size: undefined,
         active: undefined,
-        available: undefined,
       })
     );
   });
 
-  it('converte numeros e booleanos enviados como string', async () => {
+  it('converte boolean enviado como string', async () => {
     const dto = plainToInstance(UpdateDonationDto, {
-      initial_quantity: '10',
-      current_quantity: '4',
       active: 'false',
-      available: 'true',
     });
 
     await expect(validate(dto)).resolves.toHaveLength(0);
-    expect(dto.initial_quantity).toBe(10);
-    expect(dto.current_quantity).toBe(4);
     expect(dto.active).toBe(false);
-    expect(dto.available).toBe(true);
+  });
+
+  it('rejeita campos legados de estoque com whitelist estrita', async () => {
+    const dto = plainToInstance(UpdateDonationDto, {
+      current_quantity: 10,
+    });
+
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0].property).toBe('current_quantity');
+    expect(errors[0].constraints).toEqual(
+      expect.objectContaining({
+        whitelistValidation: expect.any(String),
+      })
+    );
   });
 });

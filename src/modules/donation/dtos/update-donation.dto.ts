@@ -1,24 +1,8 @@
 import { Transform } from 'class-transformer';
-import {
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' || value === null ? undefined : value;
-
-const optionalNumber = ({ value }: { value: unknown }) => {
-  if (value === '' || value === null || value === undefined) {
-    return undefined;
-  }
-
-  const parsedValue = Number(value);
-  return Number.isNaN(parsedValue) ? value : parsedValue;
-};
 
 const optionalBoolean = ({ value }: { value: unknown }) => {
   if (value === '' || value === null || value === undefined) {
@@ -55,16 +39,6 @@ export class UpdateDonationDto {
   description?: string;
 
   @IsOptional()
-  @Transform(optionalNumber)
-  @IsNumber()
-  initial_quantity?: number;
-
-  @IsOptional()
-  @Transform(optionalNumber)
-  @IsNumber()
-  current_quantity?: number;
-
-  @IsOptional()
   @Transform(emptyToUndefined)
   @IsString()
   @MaxLength(90)
@@ -86,9 +60,4 @@ export class UpdateDonationDto {
   @Transform(optionalBoolean)
   @IsBoolean()
   active?: boolean;
-
-  @IsOptional()
-  @Transform(optionalBoolean)
-  @IsBoolean()
-  available?: boolean;
 }
