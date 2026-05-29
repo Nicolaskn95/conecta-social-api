@@ -22,6 +22,8 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { EmployeeRole } from '@/modules/employee/enums/role.enum';
+import { LoggedUser } from '@/common/decorator/user.decorator';
+import { Employee } from '@prisma/client';
 
 @ApiTags('Families')
 @Controller('families')
@@ -34,8 +36,8 @@ export class FamilyController {
   @Post()
   @ApiOperation({ summary: 'Criar nova família' })
   @ApiResponse({ status: 201, description: 'Família criada com sucesso' })
-  create(@Body() dto: CreateFamilyDto) {
-    return this.familyService.create(dto);
+  create(@Body() dto: CreateFamilyDto, @LoggedUser() employee?: Employee) {
+    return this.familyService.create(dto, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -103,8 +105,12 @@ export class FamilyController {
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar família' })
   @ApiResponse({ status: 200, description: 'Família atualizada com sucesso' })
-  update(@Param('id') id: string, @Body() dto: UpdateFamilyDto) {
-    return this.familyService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateFamilyDto,
+    @LoggedUser() employee?: Employee
+  ) {
+    return this.familyService.update(id, dto, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -113,7 +119,7 @@ export class FamilyController {
   @Delete(':id')
   @ApiOperation({ summary: 'Desativar família' })
   @ApiResponse({ status: 200, description: 'Família desativada com sucesso' })
-  remove(@Param('id') id: string) {
-    return this.familyService.remove(id);
+  remove(@Param('id') id: string, @LoggedUser() employee?: Employee) {
+    return this.familyService.remove(id, employee);
   }
 }

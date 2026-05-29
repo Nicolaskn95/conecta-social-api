@@ -3,6 +3,7 @@ import { EventService } from './event.service';
 import { PrismaService } from '@/config/prisma/prisma.service';
 import { InstagramContentService } from './services/instagram-content.service';
 import { EmployeeRole, EventStatus } from '@prisma/client';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 describe('EventService', () => {
   let prisma: {
@@ -17,6 +18,9 @@ describe('EventService', () => {
   let instagramContentService: {
     validateUrl: jest.Mock;
     generateEmbeds: jest.Mock;
+  };
+  let auditLogService: {
+    write: jest.Mock;
   };
   let service: EventService;
 
@@ -34,10 +38,14 @@ describe('EventService', () => {
       validateUrl: jest.fn(),
       generateEmbeds: jest.fn(),
     };
+    auditLogService = {
+      write: jest.fn(),
+    };
 
     service = new EventService(
       prisma as unknown as PrismaService,
-      instagramContentService as unknown as InstagramContentService
+      instagramContentService as unknown as InstagramContentService,
+      auditLogService as unknown as AuditLogService
     );
   });
 

@@ -1,9 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { FamilyService } from './family.service';
 import { FamilyRepository } from './repositories/family.repository.interface';
+import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 describe('FamilyService', () => {
   let repository: jest.Mocked<FamilyRepository>;
+  let auditLogService: jest.Mocked<AuditLogService>;
   let service: FamilyService;
 
   beforeEach(() => {
@@ -17,8 +19,11 @@ describe('FamilyService', () => {
       findPaginated: jest.fn(),
       countActives: jest.fn(),
     };
+    auditLogService = {
+      write: jest.fn(),
+    } as any;
 
-    service = new FamilyService(repository as any);
+    service = new FamilyService(repository as any, auditLogService as any);
   });
 
   it('cria família via repositório', async () => {

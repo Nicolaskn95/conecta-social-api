@@ -28,6 +28,24 @@ enum DonationStockAdjustmentReason {
   OTHER
 }
 
+enum AuditEntityType {
+  DONATION
+  DONATION_TO_FAMILY
+  FAMILY
+  EVENT
+}
+
+enum AuditActionType {
+  CREATE
+  UPDATE
+  SOFT_DELETE
+  STOCK_ADJUSTMENT
+  ALLOCATE_TO_FAMILY
+  UPDATE_STATUS
+  UPDATE_ATTENDANCE
+  UPDATE_INSTAGRAM
+}
+
 model Employee {
   id           String   @id @default(uuid())
   name         String   @db.VarChar(30)
@@ -54,6 +72,7 @@ model Employee {
   updated_at   DateTime @updatedAt
   logs LogEmployeeEvent[]
   donation_stock_adjustments DonationStockAdjustment[]
+  audit_logs AuditLog[]
 
   @@map("employees")
 }
@@ -186,4 +205,23 @@ model DonationStockAdjustment {
   @@index([id_donation, created_at])
   @@index([id_employee, created_at])
   @@map("donation_stock_adjustments")
+}
+
+model AuditLog {
+  id                String          @id @default(uuid())
+  entity_type       AuditEntityType
+  entity_id         String          @db.VarChar(64)
+  action_type       AuditActionType
+  actor_employee_id String?
+  actor_role        EmployeeRole?
+  message           String          @db.VarChar(250)
+  metadata          Json?
+  created_at        DateTime        @default(now())
+
+  actor_employee Employee? @relation(fields: [actor_employee_id], references: [id], onDelete: SetNull)
+
+  @@index([entity_type, entity_id, created_at])
+  @@index([actor_employee_id, created_at])
+  @@index([created_at])
+  @@map("audit_logs")
 }

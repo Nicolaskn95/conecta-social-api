@@ -4,9 +4,10 @@ import { DonationService } from './services/donation.service';
 import { DonationRepository } from './repositories/donation.repository';
 import { PrismaModule } from '@/config/prisma/prisma.module';
 import { DonationImageService } from './services/donation-image.service';
+import { AuditLogModule } from '@/modules/audit-log/audit-log.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuditLogModule],
   controllers: [DonationController],
   providers: [DonationService, DonationRepository, DonationImageService],
 })

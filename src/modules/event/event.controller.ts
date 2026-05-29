@@ -71,8 +71,8 @@ export class EventController {
     status: 403,
     description: 'Acesso negado (nível de permissão insuficiente)',
   })
-  create(@Body() dto: CreateEventDto) {
-    return this.eventService.create(dto);
+  create(@Body() dto: CreateEventDto, @LoggedUser() employee?: Employee) {
+    return this.eventService.create(dto, employee);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -138,8 +138,12 @@ export class EventController {
   @ApiOperation({ summary: 'Atualizar dados básicos do evento por ID' })
   @ApiResponse({ status: 200, description: 'Evento atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado' })
-  update(@Param('id') id: string, @Body() dto: UpdateEventBasicDto) {
-    return this.eventService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEventBasicDto,
+    @LoggedUser() employee?: Employee
+  ) {
+    return this.eventService.update(id, dto, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -162,9 +166,10 @@ export class EventController {
   @ApiOperation({ summary: 'Atualizar presença do evento' })
   updateAttendance(
     @Param('id') id: string,
-    @Body() dto: UpdateEventAttendanceDto
+    @Body() dto: UpdateEventAttendanceDto,
+    @LoggedUser() employee?: Employee
   ) {
-    return this.eventService.updateAttendance(id, dto.attendance);
+    return this.eventService.updateAttendance(id, dto.attendance, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -174,9 +179,10 @@ export class EventController {
   @ApiOperation({ summary: 'Atualizar post do Instagram do evento' })
   updateInstagram(
     @Param('id') id: string,
-    @Body() dto: UpdateEventInstagramDto
+    @Body() dto: UpdateEventInstagramDto,
+    @LoggedUser() employee?: Employee
   ) {
-    return this.eventService.updateInstagram(id, dto.embedded_instagram);
+    return this.eventService.updateInstagram(id, dto.embedded_instagram, employee);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -190,7 +196,7 @@ export class EventController {
     description: 'Acesso negado (nível de permissão insuficiente)',
   })
   @ApiResponse({ status: 404, description: 'Evento não encontrado' })
-  remove(@Param('id') id: string) {
-    return this.eventService.remove(id);
+  remove(@Param('id') id: string, @LoggedUser() employee?: Employee) {
+    return this.eventService.remove(id, employee);
   }
 }
