@@ -22,12 +22,18 @@ async function bootstrap() {
       transform: true, // habilita o transform para DTOs
     })
   );
+  const isProd =
+    process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
   app.use(
-    pino({
-      transport: {
-        target: 'pino-pretty',
-      },
-    })
+    pino(
+      isProd
+        ? {}
+        : {
+            transport: {
+              target: 'pino-pretty',
+            },
+          }
+    )
   );
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
 
