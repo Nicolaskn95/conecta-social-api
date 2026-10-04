@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EventStatus } from '@prisma/client';
+import { EventStatus } from '@/domain/enums';
 
 class StatusItemDto {
   @ApiProperty({ example: 'Aberto', description: 'Label do status' })

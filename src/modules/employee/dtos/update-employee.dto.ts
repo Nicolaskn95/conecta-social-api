@@ -11,7 +11,7 @@ import {
   IsString,
   Length,
 } from 'class-validator';
-import { EmployeeRole } from '@prisma/client';
+import { EmployeeRole } from '@/domain/enums';
 
 export class UpdateEmployeeDto extends PartialType(CreateEmployeeDto) {
   @ApiPropertyOptional({ example: 'João' })

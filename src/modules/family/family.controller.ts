@@ -23,12 +23,12 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 import { LoggedUser } from '@/common/decorator/user.decorator';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 @ApiTags('Families')
 @Controller('families')
 export class FamilyController {
-  constructor(private readonly familyService: FamilyService) {}
+  constructor(private readonly familyService: FamilyService) { }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)

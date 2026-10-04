@@ -19,7 +19,10 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed": "ts-node --transpile-only prisma/seed.ts",
-    "seed:prod": "node dist/prisma/seed.js"
+    "seed:prod": "node dist/prisma/seed.js",
+    "seed:mongo": "ts-node --transpile-only -r tsconfig-paths/register scripts/seed.mongo.ts",
+    "seed:mongo:prod": "node dist/scripts/seed.mongo.js",
+    "migrate:pg-to-mongo": "ts-node --transpile-only -r tsconfig-paths/register scripts/migrate-postgres-to-mongo.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1038.0",
@@ -28,6 +31,7 @@
     "@nestjs/core": "^10.2.5",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/mapped-types": "^2.1.0",
+    "@nestjs/mongoose": "10.1.0",
     "@nestjs/passport": "^10.0.1",
     "@nestjs/platform-express": "^10.2.5",
     "@nestjs/swagger": "^11.2.0",
@@ -39,6 +43,7 @@
     "cpf-cnpj-validator": "^1.0.3",
     "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.0",
     "natural": "6.3.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

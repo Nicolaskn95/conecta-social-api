@@ -29,7 +29,7 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 import { LoggedUser } from '@/common/decorator/user.decorator';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 const DONATION_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -38,7 +38,7 @@ const DONATION_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 @UseGuards(JwtAuthGuard)
 @Controller('donations')
 export class DonationController {
-  constructor(private readonly donationService: DonationService) {}
+  constructor(private readonly donationService: DonationService) { }
 
   @Post()
   @UseInterceptors(

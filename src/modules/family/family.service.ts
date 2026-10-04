@@ -1,14 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AuditActionType, AuditEntityType, Employee } from '@prisma/client';
+import { AuditActionType, AuditEntityType } from '@/domain/enums';
+import { Employee } from '@/domain/entities';
+import { FamilyRepository } from '@/domain/repositories';
 import { CreateFamilyDto } from './dto/create-family.dto';
 import { UpdateFamilyDto } from './dto/update-family.dto';
-import { FamilyRepositoryImpl } from './repositories/family.repository.impl';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 @Injectable()
 export class FamilyService {
   constructor(
-    private familyRepository: FamilyRepositoryImpl,
+    private readonly familyRepository: FamilyRepository,
     private readonly auditLogService: AuditLogService
   ) {}
 

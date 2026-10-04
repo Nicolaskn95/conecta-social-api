@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { FamilyService } from './family.service';
-import { FamilyRepository } from './repositories/family.repository.interface';
+import { FamilyRepository } from '@/domain/repositories';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 describe('FamilyService', () => {
@@ -14,11 +14,12 @@ describe('FamilyService', () => {
       findAll: jest.fn(),
       findAllActives: jest.fn(),
       findById: jest.fn(),
+      findActiveById: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
       findPaginated: jest.fn(),
       countActives: jest.fn(),
-    };
+    } as any;
     auditLogService = {
       write: jest.fn(),
     } as any;

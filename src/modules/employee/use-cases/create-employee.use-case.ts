@@ -1,17 +1,16 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { LoggerService } from '@/common/logger/logger.service';
 import * as bcrypt from 'bcrypt';
 import { cpf as cpfValidator } from 'cpf-cnpj-validator';
 
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
-import { EmployeeRepository } from '../repositories/employee.repository.interface';
+import { EmployeeRepository } from '@/domain/repositories';
 import { ErrorMessages } from '@/common/helper/error-messages';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 @Injectable()
 export class CreateEmployeeUseCase {
   constructor(
-    @Inject('EmployeeRepository')
     private readonly repository: EmployeeRepository,
     private readonly logger: LoggerService
   ) {}

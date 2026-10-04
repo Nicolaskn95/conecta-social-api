@@ -49,8 +49,9 @@ Link do Jira: https://blackandyellow.atlassian.net/jira/software/c/projects/CS/b
 
 - NestJS (Framework)
 - TypeScript
-- Prisma ORM
-- PostgreSQL
+- Prisma ORM (Adapter PostgreSQL)
+- Mongoose / MongoDB Driver (Adapter MongoDB)
+- PostgreSQL & MongoDB
 - Docker & Docker Compose
 - jest / supertest (testes) — conforme setup do projeto
 - Undici / fetch (chamadas a microserviços)
@@ -59,13 +60,19 @@ Link do Jira: https://blackandyellow.atlassian.net/jira/software/c/projects/CS/b
 
 ```
 src/
-├── config/        # configuração (Prisma, env, etc)
-├── modules/       # módulos por domínio (event, volunteer, family, auth...)
-│   ├── event/
-│   └── ...
-├── common/        # middlewares, interceptors, guards, dtos, helpers
-├── main.ts        # bootstrap da aplicação
-└── prisma/        # schema e migrations (quando aplicável)
+├── domain/             # Entidades de domínio, Enums, Contratos de Repositórios e TransactionManager (agnósticos)
+│   ├── entities/
+│   ├── enums/
+│   ├── repositories/
+│   └── transaction/
+├── infra/              # Adaptadores de infraestrutura e persistência desacoplada
+│   └── database/
+│       ├── prisma/     # Implementações de repositórios para PostgreSQL (Prisma)
+│       ├── mongo/      # Implementações de repositórios para MongoDB (Mongoose Schemas/Mappers)
+│       └── database.module.ts # Dynamic Module selecionando o provedor via DATABASE_PROVIDER
+├── modules/            # Módulos por domínio (event, employee, family, donation, auth...)
+├── common/             # Middlewares, interceptors, guards, dtos, helpers
+└── main.ts             # Bootstrap da aplicação
 ```
 
 ## 🚀 Instalação e Execução (local)
@@ -74,7 +81,7 @@ src/
 - Node.js 18+
 - Yarn / npm / pnpm
 - Docker (opcional para execução em container)
-- PostgreSQL local ou via Docker
+- PostgreSQL local/remoto e/ou MongoDB local/Atlas
 
 ### Instalação
 ```bash
@@ -84,7 +91,23 @@ yarn install
 ```
 
 ### Configurar variáveis de ambiente
-Crie ou edite `.env` com as variáveis necessárias (ex.: DATABASE_URL, JWT_SECRET, JWT_EXPIRATION, PORT).
+Crie ou edite `.env` com as variáveis necessárias (veja `.env.example`).
+
+```bash
+# Provedor de banco de dados ativo: 'postgres' ou 'mongo' (padrão: postgres)
+DATABASE_PROVIDER=postgres
+
+# Conexão PostgreSQL (obrigatório se DATABASE_PROVIDER=postgres)
+DATABASE_URL=postgresql://postgres:root@localhost:5432/conecta_social?schema=public
+
+# Conexão MongoDB (obrigatório se DATABASE_PROVIDER=mongo)
+MONGODB_URI=mongodb://localhost:27017/conecta_social
+
+# Autenticação
+JWT_SECRET=sua-chave-secreta
+JWT_EXPIRATION=7d
+PORT=3000
+```
 
 ### Variáveis para Chatbot LLM (Maritaca)
 Para habilitar respostas com LLM no endpoint público de FAQ, configure também:
@@ -99,17 +122,37 @@ MARITACA_TIMEOUT_MS=15000
 
 Se `MARITACA_API_KEY` não estiver definida, a API continua funcionando com fallback local da FAQ.
 
-### Gerar Prisma e executar migrations
+### Inicialização do Banco de Dados
+
+#### Opção A: PostgreSQL (Padrão)
 ```bash
+# Gerar cliente Prisma e rodar migrações
 yarn prisma generate
 yarn prisma migrate dev --name init
+
+# Popular banco com dados iniciais (admin e categorias padrão)
+yarn seed
+```
+
+#### Opção B: MongoDB
+```bash
+# Definir DATABASE_PROVIDER=mongo e MONGODB_URI no .env
+# Popular banco MongoDB com dados iniciais (admin e categorias padrão)
+yarn seed:mongo
+```
+
+#### Migrar Dados de PostgreSQL para MongoDB
+Se já possui dados no PostgreSQL e deseja sincronizá-los com o MongoDB:
+```bash
+# Executa migração idempotente (upsert seguro sem duplicidade)
+yarn migrate:pg-to-mongo
 ```
 
 ### Rodar em modo de desenvolvimento
 ```bash
 yarn start:dev
 # ou
-yarn run dev
+yarn dev
 ```
 
 ## 🐳 Docker

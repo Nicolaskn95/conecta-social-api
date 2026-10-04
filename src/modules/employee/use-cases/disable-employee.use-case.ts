@@ -1,14 +1,11 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { EmployeeRepository } from '../repositories/employee.repository.interface';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { EmployeeRepository } from '@/domain/repositories';
 import { ErrorMessages } from '@/common/helper/error-messages';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 @Injectable()
 export class DisableEmployeeUseCase {
-  constructor(
-    @Inject('EmployeeRepository')
-    private readonly repository: EmployeeRepository
-  ) {}
+  constructor(private readonly repository: EmployeeRepository) {}
 
   async execute(id: string): Promise<Employee> {
     const employee = await this.repository.findById(id);

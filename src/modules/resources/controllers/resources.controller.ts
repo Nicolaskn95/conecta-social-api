@@ -8,12 +8,12 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 import { LoggedUser } from '@/common/decorator/user.decorator';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 @ApiTags('Resources')
 @Controller('resources')
 export class ResourcesController {
-  constructor(private readonly resourcesService: ResourcesService) {}
+  constructor(private readonly resourcesService: ResourcesService) { }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)

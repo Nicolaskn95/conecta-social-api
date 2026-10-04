@@ -4,7 +4,6 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { DonationRepository } from '../repositories/donation.repository';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
 import { UpdateDonationDto } from '../dtos/update-donation.dto';
 import { CreateDonationStockAdjustmentDto } from '../dtos/create-donation-stock-adjustment.dto';
@@ -16,10 +15,14 @@ import {
   AuditActionType,
   AuditEntityType,
   DonationStockAdjustmentReason,
-  Employee,
   EmployeeRole,
-} from '@prisma/client';
-import { PrismaService } from '@/config/prisma/prisma.service';
+} from '@/domain/enums';
+import { Employee } from '@/domain/entities';
+import {
+  DonationRepository,
+  DonationStockAdjustmentRepository,
+} from '@/domain/repositories';
+import { TransactionManager } from '@/domain/transaction/transaction-manager';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 type DonationWithImage = {
@@ -31,8 +34,9 @@ type DonationWithImage = {
 export class DonationService {
   constructor(
     private readonly donationRepository: DonationRepository,
+    private readonly donationStockAdjustmentRepository: DonationStockAdjustmentRepository,
     private readonly donationImageService: DonationImageService,
-    private readonly prisma: PrismaService,
+    private readonly transactionManager: TransactionManager,
     private readonly auditLogService: AuditLogService
   ) {}
 
@@ -184,11 +188,8 @@ export class DonationService {
       );
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const donation = await tx.donation.findFirst({
-        where: { id, active: true },
-        include: { category: true },
-      });
+    const result = await this.transactionManager.run(async (ctx) => {
+      const donation = await this.donationRepository.findById(id, ctx);
 
       if (!donation) {
         throw new NotFoundException('Doação não encontrada');
@@ -201,31 +202,28 @@ export class DonationService {
         );
       }
 
-      const updatedDonation = await tx.donation.update({
-        where: { id: donation.id },
-        data: {
-          current_quantity: newQuantity,
-          available: newQuantity > 0,
-        },
-        include: {
-          category: true,
-        },
-      });
+      const updatedDonation = await this.donationRepository.setStock(
+        donation.id,
+        newQuantity,
+        ctx
+      );
 
-      const adjustment = await tx.donationStockAdjustment.create({
-        data: {
-          id_donation: donation.id,
-          id_employee: actor.id,
-          delta_quantity: dto.delta_quantity,
-          previous_quantity: donation.current_quantity,
-          new_quantity: newQuantity,
-          reason: dto.reason,
-          note: normalizedNote ?? null,
-        },
-      });
+      const adjustment =
+        await this.donationStockAdjustmentRepository.create(
+          {
+            id_donation: donation.id,
+            id_employee: actor.id,
+            delta_quantity: dto.delta_quantity,
+            previous_quantity: donation.current_quantity,
+            new_quantity: newQuantity,
+            reason: dto.reason,
+            note: normalizedNote ?? null,
+          },
+          ctx
+        );
 
       await this.auditLogService.write({
-        tx,
+        ctx,
         entityType: AuditEntityType.DONATION,
         entityId: donation.id,
         actionType: AuditActionType.STOCK_ADJUSTMENT,
@@ -254,25 +252,7 @@ export class DonationService {
 
   async findStockAdjustments(id: string) {
     await this.getActiveDonationOrThrow(id);
-
-    return this.prisma.donationStockAdjustment.findMany({
-      where: {
-        id_donation: id,
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            name: true,
-            surname: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
+    return this.donationStockAdjustmentRepository.findByDonation(id);
   }
 
   async delete(id: string, actor?: Employee) {

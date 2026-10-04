@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@/config/prisma/prisma.service';
 import { DashboardPeriod } from './dto/dashboard-overview-query.dto';
-import { EmployeeRole } from '@prisma/client';
+import { EmployeeRole } from '@/domain/enums';
+import { DashboardRepository } from '@/domain/repositories';
 
 type SupportedStatus = 'ABERTO' | 'CONCLUIDO' | 'CANCELADO' | 'OUTROS';
 
@@ -11,62 +11,20 @@ interface BucketConfig {
   start: Date;
 }
 
-interface DashboardEventRow {
-  id: string;
-  name: string;
-  city: string;
-  date: Date | string;
-  status: string;
-  attendance: number | null;
-  created_at: Date | string;
-}
-
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly dashboardRepository: DashboardRepository) {}
 
   async getOverview(period: DashboardPeriod = 'year', role?: EmployeeRole) {
     const now = new Date();
     const bucketConfig = this.buildBucketConfig(period, now);
 
-    const [families, employees, rawEvents, donations] = await Promise.all([
-      this.prisma.family.findMany({
-        where: { active: true },
-        select: {
-          id: true,
-          name: true,
-          city: true,
-          neighborhood: true,
-          created_at: true,
-        },
-      }),
-      this.prisma.employee.findMany({
-        where: { active: true },
-        select: {
-          id: true,
-          role: true,
-        },
-      }),
-      this.getActiveEventsForDashboard(),
-      this.prisma.donation.findMany({
-        where: { active: true },
-        select: {
-          id: true,
-          name: true,
-          donator_name: true,
-          current_quantity: true,
-          available: true,
-          created_at: true,
-          updated_at: true,
-          category: {
-            select: {
-              name: true,
-              measure_unity: true,
-            },
-          },
-        },
-      }),
-    ]);
+    const {
+      families,
+      employees,
+      events: rawEvents,
+      donations,
+    } = await this.dashboardRepository.getOverviewSource();
 
     const events = rawEvents.map((event) => ({
       ...event,
@@ -365,56 +323,5 @@ export class DashboardService {
     }
 
     return 'OUTROS';
-  }
-
-  private async getActiveEventsForDashboard(): Promise<DashboardEventRow[]> {
-    if (typeof (this.prisma as any).$queryRaw !== 'function') {
-      return this.prisma.event.findMany({
-        where: { active: true },
-        select: {
-          id: true,
-          name: true,
-          city: true,
-          date: true,
-          status: true,
-          attendance: true,
-          created_at: true,
-        },
-      }) as unknown as DashboardEventRow[];
-    }
-
-    return this.prisma.$queryRaw<DashboardEventRow[]>`
-      SELECT
-        e.id,
-        e.name,
-        e.city,
-        e.date,
-        e.attendance,
-        e.created_at,
-        CASE
-          WHEN e.normalized_status LIKE '%CONCLUID%' OR e.normalized_status LIKE '%COMPLET%' THEN 'COMPLETED'
-          WHEN e.normalized_status LIKE '%CANCEL%' THEN 'CANCELED'
-          WHEN e.normalized_status LIKE '%ABERTO%' OR e.normalized_status LIKE '%ATIVO%' OR e.normalized_status LIKE '%SCHEDULED%' THEN 'SCHEDULED'
-          ELSE 'SCHEDULED'
-        END AS status
-      FROM (
-        SELECT
-          id,
-          name,
-          city,
-          date,
-          attendance,
-          created_at,
-          UPPER(
-            TRANSLATE(
-              TRIM(status::text),
-              'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ',
-              'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC'
-            )
-          ) AS normalized_status
-        FROM "events"
-        WHERE active = true
-      ) e
-    `;
   }
 }

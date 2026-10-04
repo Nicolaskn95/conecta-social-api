@@ -3,15 +3,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuditActionType, AuditEntityType, Employee } from '@prisma/client';
-import { PrismaService } from '@/config/prisma/prisma.service';
+import { AuditActionType, AuditEntityType } from '@/domain/enums';
+import { Employee } from '@/domain/entities';
 import { CreateDonationToFamilyDto } from './dto/create-donation-to-family.dto';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
+import {
+  DonationRepository,
+  DonationToFamilyRepository,
+  FamilyRepository,
+} from '@/domain/repositories';
+import { TransactionManager } from '@/domain/transaction/transaction-manager';
 
 @Injectable()
 export class DonationToFamilyService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly donationToFamilyRepository: DonationToFamilyRepository,
+    private readonly donationRepository: DonationRepository,
+    private readonly familyRepository: FamilyRepository,
+    private readonly transactionManager: TransactionManager,
     private readonly auditLogService: AuditLogService
   ) {}
 
@@ -20,16 +29,10 @@ export class DonationToFamilyService {
       throw new BadRequestException('A quantidade deve ser maior que zero.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.transactionManager.run(async (ctx) => {
       const [donation, family] = await Promise.all([
-        tx.donation.findFirst({
-          where: { id: dto.id_donation, active: true },
-          select: { id: true, current_quantity: true },
-        }),
-        tx.family.findFirst({
-          where: { id: dto.id_family, active: true },
-          select: { id: true },
-        }),
+        this.donationRepository.findById(dto.id_donation, ctx),
+        this.familyRepository.findActiveById(dto.id_family, ctx),
       ]);
 
       if (!donation) {
@@ -40,53 +43,32 @@ export class DonationToFamilyService {
         throw new NotFoundException('Família não encontrada.');
       }
 
-      const stockDecrementResult = await tx.donation.updateMany({
-        where: {
-          id: dto.id_donation,
-          active: true,
-          current_quantity: { gte: dto.quantity },
-        },
-        data: {
-          current_quantity: {
-            decrement: dto.quantity,
-          },
-        },
-      });
+      const updatedDonation =
+        await this.donationRepository.decrementStockIfAvailable(
+          dto.id_donation,
+          dto.quantity,
+          ctx
+        );
 
-      if (stockDecrementResult.count === 0) {
+      if (!updatedDonation) {
         throw new BadRequestException(
           'Estoque insuficiente para concluir esta doação.'
         );
       }
 
-      const donationAfterUpdate = await tx.donation.findUnique({
-        where: { id: dto.id_donation },
-        select: { current_quantity: true },
-      });
-
-      await tx.donation.update({
-        where: { id: dto.id_donation },
-        data: {
-          available: (donationAfterUpdate?.current_quantity ?? 0) > 0,
-        },
-      });
-
-      const donationToFamily = await tx.donationToFamily.create({
-        data: {
-          ...dto,
-        },
-        include: {
-          donation: {
-            include: {
-              category: true,
-            },
+      const donationToFamily =
+        await this.donationToFamilyRepository.create(
+          {
+            id_donation: dto.id_donation,
+            id_family: dto.id_family,
+            quantity: dto.quantity,
+            update_message: dto.update_message,
           },
-          family: true,
-        },
-      });
+          ctx
+        );
 
       await this.auditLogService.write({
-        tx,
+        ctx,
         entityType: AuditEntityType.DONATION_TO_FAMILY,
         entityId: donationToFamily.id,
         actionType: AuditActionType.ALLOCATE_TO_FAMILY,
@@ -97,7 +79,7 @@ export class DonationToFamilyService {
           family_id: dto.id_family,
           quantity: dto.quantity,
           previous_quantity: donation.current_quantity,
-          new_quantity: donationAfterUpdate?.current_quantity ?? null,
+          new_quantity: updatedDonation.current_quantity,
         },
       });
 
@@ -106,60 +88,21 @@ export class DonationToFamilyService {
   }
 
   findAllActives() {
-    return this.prisma.donationToFamily.findMany({
-      where: {
-        active: true,
-        donation: { active: true },
-        family: { active: true },
-      },
-      include: {
-        donation: {
-          include: {
-            category: true,
-          },
-        },
-        family: true,
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
+    return this.donationToFamilyRepository.findAllActives();
   }
 
   findAll() {
-    return this.prisma.donationToFamily.findMany({
-      include: {
-        donation: {
-          include: {
-            category: true,
-          },
-        },
-        family: true,
-      },
-      orderBy: {
-        created_at: 'desc',
-      },
-    });
+    return this.donationToFamilyRepository.findAll();
   }
 
   async findById(id: string) {
-    const donationToFamily = await this.prisma.donationToFamily.findFirst({
-      where: {
-        id,
-        active: true,
-      },
-      include: {
-        donation: {
-          include: {
-            category: true,
-          },
-        },
-        family: true,
-      },
-    });
+    const donationToFamily =
+      await this.donationToFamilyRepository.findActiveById(id);
 
     if (!donationToFamily) {
-      throw new NotFoundException('Registro de doação para família não encontrado.');
+      throw new NotFoundException(
+        'Registro de doação para família não encontrado.'
+      );
     }
 
     return donationToFamily;
@@ -167,28 +110,10 @@ export class DonationToFamilyService {
 
   async findAllPaginated(page = 1, size = 10) {
     const skip = (page - 1) * size;
-    const where = {
-      active: true,
-      donation: { active: true },
-      family: { active: true },
-    };
 
     const [list, total] = await Promise.all([
-      this.prisma.donationToFamily.findMany({
-        where,
-        include: {
-          donation: {
-            include: {
-              category: true,
-            },
-          },
-          family: true,
-        },
-        orderBy: { created_at: 'desc' },
-        skip,
-        take: size,
-      }),
-      this.prisma.donationToFamily.count({ where }),
+      this.donationToFamilyRepository.findActivePaginated(skip, size),
+      this.donationToFamilyRepository.countActives(),
     ]);
 
     const totalPages = Math.ceil(total / size);

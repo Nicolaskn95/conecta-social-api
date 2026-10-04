@@ -1,32 +1,30 @@
 import { DashboardService } from './dashboard.service';
-import { PrismaService } from '@/config/prisma/prisma.service';
-import { EmployeeRole } from '@prisma/client';
+import { EmployeeRole } from '@/domain/enums';
+import { DashboardRepository, DashboardSource } from '@/domain/repositories';
 
 describe('DashboardService', () => {
-  let prisma: {
-    family: { findMany: jest.Mock };
-    employee: { findMany: jest.Mock };
-    event: { findMany: jest.Mock };
-    donation: { findMany: jest.Mock };
+  let dashboardRepository: {
+    getOverviewSource: jest.Mock<Promise<DashboardSource>>;
   };
   let service: DashboardService;
 
   beforeEach(() => {
-    prisma = {
-      family: { findMany: jest.fn() },
-      employee: { findMany: jest.fn() },
-      event: { findMany: jest.fn() },
-      donation: { findMany: jest.fn() },
+    dashboardRepository = {
+      getOverviewSource: jest.fn(),
     };
 
-    service = new DashboardService(prisma as unknown as PrismaService);
+    service = new DashboardService(
+      dashboardRepository as unknown as DashboardRepository
+    );
   });
 
   it('retorna overview vazio sem quebrar o contrato', async () => {
-    prisma.family.findMany.mockResolvedValue([]);
-    prisma.employee.findMany.mockResolvedValue([]);
-    prisma.event.findMany.mockResolvedValue([]);
-    prisma.donation.findMany.mockResolvedValue([]);
+    dashboardRepository.getOverviewSource.mockResolvedValue({
+      families: [],
+      employees: [],
+      events: [],
+      donations: [],
+    });
 
     const result = await service.getOverview('year');
 
@@ -53,75 +51,77 @@ describe('DashboardService', () => {
 
   it('agrega métricas operacionais usando o schema atual', async () => {
     const now = new Date();
-    prisma.family.findMany.mockResolvedValue([
-      {
-        id: 'family-1',
-        name: 'Família Souza',
-        city: 'Sorocaba',
-        neighborhood: 'Centro',
-        created_at: now,
-      },
-      {
-        id: 'family-2',
-        name: 'Família Lima',
-        city: 'Votorantim',
-        neighborhood: 'Vila Nova',
-        created_at: now,
-      },
-    ]);
-    prisma.employee.findMany.mockResolvedValue([
-      { id: 'employee-1', role: EmployeeRole.ADMIN },
-      { id: 'employee-2', role: EmployeeRole.VOLUNTEER },
-      { id: 'employee-3', role: EmployeeRole.VOLUNTEER },
-    ]);
-    prisma.event.findMany.mockResolvedValue([
-      {
-        id: 'event-1',
-        name: 'Mutirão',
-        city: 'Sorocaba',
-        date: new Date(now.getTime() + 1000 * 60 * 60 * 24),
-        status: 'SCHEDULED',
-        attendance: 20,
-        created_at: now,
-      },
-      {
-        id: 'event-2',
-        name: 'Entrega',
-        city: 'Votorantim',
-        date: new Date(now.getTime() - 1000 * 60 * 60 * 24),
-        status: 'COMPLETED',
-        attendance: 30,
-        created_at: now,
-      },
-    ]);
-    prisma.donation.findMany.mockResolvedValue([
-      {
-        id: 'donation-1',
-        name: 'Arroz',
-        donator_name: 'Maria',
-        current_quantity: 4,
-        available: true,
-        created_at: now,
-        updated_at: now,
-        category: {
-          name: 'Alimento não perecível',
-          measure_unity: 'KG',
+    dashboardRepository.getOverviewSource.mockResolvedValue({
+      families: [
+        {
+          id: 'family-1',
+          name: 'Família Souza',
+          city: 'Sorocaba',
+          neighborhood: 'Centro',
+          created_at: now,
         },
-      },
-      {
-        id: 'donation-2',
-        name: 'Camiseta',
-        donator_name: null,
-        current_quantity: 12,
-        available: false,
-        created_at: now,
-        updated_at: now,
-        category: {
-          name: 'Roupas',
-          measure_unity: 'UN',
+        {
+          id: 'family-2',
+          name: 'Família Lima',
+          city: 'Votorantim',
+          neighborhood: 'Vila Nova',
+          created_at: now,
         },
-      },
-    ]);
+      ],
+      employees: [
+        { id: 'employee-1', role: EmployeeRole.ADMIN },
+        { id: 'employee-2', role: EmployeeRole.VOLUNTEER },
+        { id: 'employee-3', role: EmployeeRole.VOLUNTEER },
+      ],
+      events: [
+        {
+          id: 'event-1',
+          name: 'Mutirão',
+          city: 'Sorocaba',
+          date: new Date(now.getTime() + 1000 * 60 * 60 * 24),
+          status: 'SCHEDULED',
+          attendance: 20,
+          created_at: now,
+        },
+        {
+          id: 'event-2',
+          name: 'Entrega',
+          city: 'Votorantim',
+          date: new Date(now.getTime() - 1000 * 60 * 60 * 24),
+          status: 'COMPLETED',
+          attendance: 30,
+          created_at: now,
+        },
+      ],
+      donations: [
+        {
+          id: 'donation-1',
+          name: 'Arroz',
+          donator_name: 'Maria',
+          current_quantity: 4,
+          available: true,
+          created_at: now,
+          updated_at: now,
+          category: {
+            name: 'Alimento não perecível',
+            measure_unity: 'KG',
+          },
+        },
+        {
+          id: 'donation-2',
+          name: 'Camiseta',
+          donator_name: null,
+          current_quantity: 12,
+          available: false,
+          created_at: now,
+          updated_at: now,
+          category: {
+            name: 'Roupas',
+            measure_unity: 'UN',
+          },
+        },
+      ],
+    });
 
     const result = await service.getOverview('quarter');
 
@@ -152,20 +152,20 @@ describe('DashboardService', () => {
 
   it('remove métricas sensíveis do dashboard de voluntário', async () => {
     const now = new Date();
-    prisma.family.findMany.mockResolvedValue([
-      {
-        id: 'family-1',
-        name: 'Família Souza',
-        city: 'Sorocaba',
-        neighborhood: 'Centro',
-        created_at: now,
-      },
-    ]);
-    prisma.employee.findMany.mockResolvedValue([
-      { id: 'employee-1', role: EmployeeRole.ADMIN },
-    ]);
-    prisma.event.findMany.mockResolvedValue([]);
-    prisma.donation.findMany.mockResolvedValue([]);
+    dashboardRepository.getOverviewSource.mockResolvedValue({
+      families: [
+        {
+          id: 'family-1',
+          name: 'Família Souza',
+          city: 'Sorocaba',
+          neighborhood: 'Centro',
+          created_at: now,
+        },
+      ],
+      employees: [{ id: 'employee-1', role: EmployeeRole.ADMIN }],
+      events: [],
+      donations: [],
+    });
 
     const result = await service.getOverview('year', EmployeeRole.VOLUNTEER);
 

@@ -1,13 +1,15 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { EmployeeRepository } from '../repositories/employee.repository.interface';
+import {
+  EmployeeRepository,
+  UpdateEmployeeData,
+} from '@/domain/repositories';
 import { CreateEmployeeDto } from '../dtos/create-employee.dto';
 import { UpdateEmployeeDto } from '../dtos/update-employee.dto';
 import { UpdateEmployeeBasicDto } from '../dtos/update-employee-basic.dto';
@@ -15,12 +17,12 @@ import { ErrorMessages } from '@/common/helper/error-messages';
 import { CreateEmployeeUseCase } from '../use-cases/create-employee.use-case';
 import { UpdateEmployeeUseCase } from '../use-cases/update-employee.use-case';
 import { DisableEmployeeUseCase } from '../use-cases/disable-employee.use-case';
-import { Employee, EmployeeRole, Prisma } from '@prisma/client';
+import { Employee } from '@/domain/entities';
+import { EmployeeRole } from '@/domain/enums';
 
 @Injectable()
 export class EmployeeService {
   constructor(
-    @Inject('EmployeeRepository')
     private readonly repository: EmployeeRepository,
     private readonly createEmployee: CreateEmployeeUseCase,
     private readonly updateEmployee: UpdateEmployeeUseCase,
@@ -41,7 +43,9 @@ export class EmployeeService {
 
   async findAll(actor?: Employee) {
     if (actor?.role === EmployeeRole.MANAGER) {
-      const employees = await this.repository.findAllActives(EmployeeRole.VOLUNTEER);
+      const employees = await this.repository.findAllActives(
+        EmployeeRole.VOLUNTEER
+      );
       return employees.map((employee) => this.sanitizeEmployee(employee));
     }
 
@@ -162,7 +166,7 @@ export class EmployeeService {
       }
     }
 
-    const data: Prisma.EmployeeUpdateInput = {
+    const data: UpdateEmployeeData = {
       ...dto,
       cpf: cleanedCpf,
       email: normalizedEmail,
@@ -193,15 +197,5 @@ export class EmployeeService {
   private sanitizeEmployee<T extends Partial<Employee>>(employee: T) {
     const { password: _password, ...safeEmployee } = employee;
     return safeEmployee;
-  }
-
-  private async ensureUniqueFields(email: string, cpf: string) {
-    const [byEmail, byCpf] = await Promise.all([
-      this.repository.findByEmail(email),
-      this.repository.findByCpf(cpf),
-    ]);
-
-    if (byEmail) throw new BadRequestException(ErrorMessages.EMAIL_DUPLICATE);
-    if (byCpf) throw new BadRequestException(ErrorMessages.CPF_DUPLICATE);
   }
 }
