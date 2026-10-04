@@ -12,6 +12,7 @@ import { DonationToFamilyModule } from './modules/donation-to-family/donation-to
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
+import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
     DashboardModule,
     ResourcesModule,
     VoiceSearchModule,
+    BeneficiaryModule,
   ],
   controllers: [AppController],
   providers: [],

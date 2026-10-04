@@ -33,6 +33,7 @@ enum AuditEntityType {
   DONATION_TO_FAMILY
   FAMILY
   EVENT
+  BENEFICIARY
 }
 
 enum AuditActionType {
@@ -47,59 +48,59 @@ enum AuditActionType {
 }
 
 model Employee {
-  id           String   @id @default(uuid())
-  name         String   @db.VarChar(30)
-  surname      String   @db.VarChar(60)
-  birth_date   DateTime
-  cpf          String   @unique @db.VarChar(11)
-  email        String   @unique @db.VarChar(60)
-  phone        String   @db.VarChar(15)
-  password     String   @db.VarChar(128)
+  id         String   @id @default(uuid())
+  name       String   @db.VarChar(30)
+  surname    String   @db.VarChar(60)
+  birth_date DateTime
+  cpf        String   @unique @db.VarChar(11)
+  email      String   @unique @db.VarChar(60)
+  phone      String   @db.VarChar(15)
+  password   String   @db.VarChar(128)
 
-  role         EmployeeRole @default(VOLUNTEER)
+  role EmployeeRole @default(VOLUNTEER)
 
-  cep          String   @db.VarChar(9)
-  street       String   @db.VarChar(100)
-  neighborhood String   @db.VarChar(60)
-  number       String   @db.VarChar(20)
-  city         String   @db.VarChar(30)
-  state        String   @db.VarChar(20)
-  complement   String?  @db.VarChar(30)
+  cep          String  @db.VarChar(9)
+  street       String  @db.VarChar(100)
+  neighborhood String  @db.VarChar(60)
+  number       String  @db.VarChar(20)
+  city         String  @db.VarChar(30)
+  state        String  @db.VarChar(20)
+  complement   String? @db.VarChar(30)
 
-  active       Boolean  @default(true)
+  active Boolean @default(true)
 
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  logs LogEmployeeEvent[]
+  created_at                 DateTime                  @default(now())
+  updated_at                 DateTime                  @updatedAt
+  logs                       LogEmployeeEvent[]
   donation_stock_adjustments DonationStockAdjustment[]
-  audit_logs AuditLog[]
+  audit_logs                 AuditLog[]
 
   @@map("employees")
 }
 
 model Event {
-  id                   String   @id @default(uuid())
-  name                 String   @db.VarChar(100)
-  description          String?  @db.VarChar(1000)
+  id                   String      @id @default(uuid())
+  name                 String      @db.VarChar(100)
+  description          String?     @db.VarChar(1000)
   date                 DateTime
-  greeting_description String?  @db.VarChar(1000)
+  greeting_description String?     @db.VarChar(1000)
   attendance           Int?
-  embedded_instagram   String?  @db.Text
+  embedded_instagram   String?     @db.Text
   status               EventStatus @default(SCHEDULED)
 
-  street               String   @db.VarChar(100)
-  neighborhood         String   @db.VarChar(30)
-  number               String   @db.VarChar(20)
-  city                 String   @db.VarChar(30)
-  state                String   @db.VarChar(20)
-  cep                  String   @db.VarChar(9)
-  complement           String?  @db.VarChar(30)
+  street       String  @db.VarChar(100)
+  neighborhood String  @db.VarChar(30)
+  number       String  @db.VarChar(20)
+  city         String  @db.VarChar(30)
+  state        String  @db.VarChar(20)
+  cep          String  @db.VarChar(9)
+  complement   String? @db.VarChar(30)
 
-  active               Boolean  @default(true)
+  active Boolean @default(true)
 
-  updated_at           DateTime @updatedAt
-  created_at           DateTime @default(now())
-  logs LogEmployeeEvent[]
+  updated_at DateTime           @updatedAt
+  created_at DateTime           @default(now())
+  logs       LogEmployeeEvent[]
 
   @@map("events")
 }
@@ -118,54 +119,82 @@ model LogEmployeeEvent {
 }
 
 model Family {
-  id            String   @id @default(uuid())
-  name          String   @db.VarChar(60)
-  street        String   @db.VarChar(60)
-  number        String   @db.VarChar(20)
-  neighborhood  String   @db.VarChar(60)
-  city          String   @db.VarChar(30)
-  state         String   @db.VarChar(20)
-  cep           String   @db.VarChar(9)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  active        Boolean  @default(true)
+  id                  String             @id @default(uuid())
+  name                String             @db.VarChar(60)
+  street              String             @db.VarChar(60)
+  number              String             @db.VarChar(20)
+  neighborhood        String             @db.VarChar(60)
+  city                String             @db.VarChar(30)
+  state               String             @db.VarChar(20)
+  cep                 String             @db.VarChar(9)
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+  active              Boolean            @default(true)
   donations_to_family DonationToFamily[]
+  beneficiaries       Beneficiary[]
 
   @@map("families")
 }
+
+model Beneficiary {
+  id                 String   @id @default(uuid())
+  id_family          String
+  name               String   @db.VarChar(30)
+  surname            String   @db.VarChar(60)
+  birth_date         DateTime
+  cpf                String?  @unique @db.VarChar(11)
+  rg                 String?  @db.VarChar(15)
+  email              String?  @db.VarChar(60)
+  phone              String?  @db.VarChar(15)
+  has_disability     Boolean  @default(false)
+  disability_details String?  @db.VarChar(90)
+  gender             String   @db.VarChar(30)
+  active             Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  family Family @relation(fields: [id_family], references: [id])
+
+  @@index([id_family])
+  @@index([active])
+  @@index([has_disability])
+  @@map("beneficiaries")
+}
+
 model Category {
-  id             String    @id @default(uuid())
-  name           String    @db.VarChar(25)
-  measure_unity  String    @db.VarChar(10)
-  created_at     DateTime  @default(now())
-  active         Boolean   @default(true)
+  id            String   @id @default(uuid())
+  name          String   @db.VarChar(25)
+  measure_unity String   @db.VarChar(10)
+  created_at    DateTime @default(now())
+  active        Boolean  @default(true)
 
   Donation Donation[]
+
   @@map("categories")
 }
 
 model Donation {
-  id               String    @id @default(uuid())
-  category_id      String    
-  name             String    @db.VarChar(60)
-  description      String?   @db.VarChar(250)
-  initial_quantity Int       @default(0)
-  current_quantity Int       @default(0)
-  donator_name     String?   @db.VarChar(90)
-  gender           String?   @db.VarChar(10)
-  size             String?   @db.VarChar(20)
-  image_key           String? @db.VarChar(512)
-  image_bucket        String? @db.VarChar(63)
-  image_content_type  String? @db.VarChar(100)
-  image_original_name String? @db.VarChar(255)
-  active           Boolean   @default(true)
-  available        Boolean   @default(true)
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
-  
-  category         Category  @relation(fields: [category_id], references: [id])
+  id                  String   @id @default(uuid())
+  category_id         String
+  name                String   @db.VarChar(60)
+  description         String?  @db.VarChar(250)
+  initial_quantity    Int      @default(0)
+  current_quantity    Int      @default(0)
+  donator_name        String?  @db.VarChar(90)
+  gender              String?  @db.VarChar(10)
+  size                String?  @db.VarChar(20)
+  image_key           String?  @db.VarChar(512)
+  image_bucket        String?  @db.VarChar(63)
+  image_content_type  String?  @db.VarChar(100)
+  image_original_name String?  @db.VarChar(255)
+  active              Boolean  @default(true)
+  available           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  category            Category                  @relation(fields: [category_id], references: [id])
   donations_to_family DonationToFamily[]
-  stock_adjustments DonationStockAdjustment[]
+  stock_adjustments   DonationStockAdjustment[]
 
   @@map("donations")
 }
@@ -180,8 +209,8 @@ model DonationToFamily {
   updated_at     DateTime @updatedAt
   active         Boolean  @default(true)
 
-  donation       Donation @relation(fields: [id_donation], references: [id])
-  family         Family   @relation(fields: [id_family], references: [id])
+  donation Donation @relation(fields: [id_donation], references: [id])
+  family   Family   @relation(fields: [id_family], references: [id])
 
   @@index([id_donation])
   @@index([id_family])
@@ -189,18 +218,18 @@ model DonationToFamily {
 }
 
 model DonationStockAdjustment {
-  id                String   @id @default(uuid())
+  id                String                        @id @default(uuid())
   id_donation       String
   id_employee       String
   delta_quantity    Int
   previous_quantity Int
   new_quantity      Int
   reason            DonationStockAdjustmentReason
-  note              String?  @db.VarChar(500)
-  created_at        DateTime @default(now())
+  note              String?                       @db.VarChar(500)
+  created_at        DateTime                      @default(now())
 
-  donation          Donation @relation(fields: [id_donation], references: [id])
-  employee          Employee @relation(fields: [id_employee], references: [id])
+  donation Donation @relation(fields: [id_donation], references: [id])
+  employee Employee @relation(fields: [id_employee], references: [id])
 
   @@index([id_donation, created_at])
   @@index([id_employee, created_at])
