@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { DonationStockAdjustmentReason } from '@prisma/client';
+import { DonationStockAdjustmentReason } from '@/domain/enums';
 import { Transform, Type } from 'class-transformer';
 import {
   IsEnum,

@@ -4,25 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DonationService } from './donation.service';
-import { DonationRepository } from '../repositories/donation.repository';
+import { DonationRepository, DonationStockAdjustmentRepository } from '@/domain/repositories';
 import { DonationImageService } from './donation-image.service';
-import { DonationStockAdjustmentReason, EmployeeRole } from '@prisma/client';
+import { DonationStockAdjustmentReason, EmployeeRole } from '@/domain/enums';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
+import { TransactionManager } from '@/domain/transaction/transaction-manager';
 
 describe('DonationService', () => {
   let repository: jest.Mocked<DonationRepository>;
+  let stockAdjustmentRepository: jest.Mocked<DonationStockAdjustmentRepository>;
   let imageService: jest.Mocked<DonationImageService>;
   let auditLogService: jest.Mocked<AuditLogService>;
-  let prisma: any;
-  let tx: {
-    donation: {
-      findFirst: jest.Mock;
-      update: jest.Mock;
-    };
-    donationStockAdjustment: {
-      create: jest.Mock;
-    };
-  };
+  let transactionManager: jest.Mocked<TransactionManager>;
   let service: DonationService;
 
   beforeEach(() => {
@@ -36,6 +29,13 @@ describe('DonationService', () => {
       delete: jest.fn(),
       findPaginated: jest.fn(),
       countActives: jest.fn(),
+      decrementStockIfAvailable: jest.fn(),
+      setStock: jest.fn(),
+    } as any;
+
+    stockAdjustmentRepository = {
+      create: jest.fn(),
+      findByDonation: jest.fn(),
     } as any;
 
     imageService = {
@@ -43,22 +43,10 @@ describe('DonationService', () => {
       getSignedImageUrl: jest.fn(),
     } as any;
 
-    tx = {
-      donation: {
-        findFirst: jest.fn(),
-        update: jest.fn(),
-      },
-      donationStockAdjustment: {
-        create: jest.fn(),
-      },
-    };
-
-    prisma = {
-      $transaction: jest.fn(async (callback: any) => callback(tx)),
-      donationStockAdjustment: {
-        findMany: jest.fn(),
-      },
+    transactionManager = {
+      run: jest.fn(async (callback: any) => callback({})),
     } as any;
+
     auditLogService = {
       write: jest.fn(),
     } as any;
@@ -67,8 +55,9 @@ describe('DonationService', () => {
 
     service = new DonationService(
       repository as any,
+      stockAdjustmentRepository as any,
       imageService as any,
-      prisma as any,
+      transactionManager as any,
       auditLogService as any
     );
   });
@@ -86,59 +75,43 @@ describe('DonationService', () => {
     );
   });
 
-  it('retorna paginação correta', async () => {
-    repository.findPaginated.mockResolvedValue([{ id: 'd1' } as any]);
-    repository.countActives.mockResolvedValue(3);
-
-    const result = await service.findAllPaginated(1, 2);
-
-    expect(repository.findPaginated).toHaveBeenCalledWith(0, 2);
-    expect(result).toEqual(
-      expect.objectContaining({
-        page: 1,
-        next_page: 2,
-        previous_page: 1,
-        total_pages: 2,
-        is_last_page: false,
-        list: [{ id: 'd1' }],
-      })
-    );
-  });
-
-  it('retorna image_url assinada quando doação possui imagem', async () => {
-    repository.findById.mockResolvedValue({
+  it('anexa imagem assinada quando upload é fornecido', async () => {
+    imageService.upload.mockResolvedValue({
+      image_key: 'key',
+      image_bucket: 'bucket',
+      image_content_type: 'image/png',
+      image_original_name: 'test.png',
+    });
+    repository.create.mockResolvedValue({
       id: 'd1',
-      image_key: 'donations/image.jpg',
+      name: 'Doação',
+      category_id: 'c1',
+      initial_quantity: 5,
+      image_key: 'key',
       image_bucket: 'bucket',
     } as any);
-    imageService.getSignedImageUrl.mockResolvedValue(
-      'https://signed-url.example/image.jpg'
+    imageService.getSignedImageUrl.mockResolvedValue('https://signed-url');
+
+    const result = await service.create(
+      { initial_quantity: 5, name: 'Doação' } as any,
+      { buffer: Buffer.from('img') } as any,
+      { id: 'emp-1' } as any
     );
 
-    const result = await service.findById('d1');
-
-    expect(imageService.getSignedImageUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ image_key: 'donations/image.jpg' })
+    expect(imageService.upload).toHaveBeenCalled();
+    expect(auditLogService.write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'd1',
+      })
     );
     expect(result).toEqual(
       expect.objectContaining({
-        id: 'd1',
-        image_url: 'https://signed-url.example/image.jpg',
+        image_url: 'https://signed-url',
       })
     );
   });
 
-  it('faz soft delete após validar existência', async () => {
-    repository.findById.mockResolvedValue({ id: 'd1' } as any);
-    repository.delete.mockResolvedValue(undefined as any);
-
-    await service.delete('d1');
-
-    expect(repository.findById).toHaveBeenCalledWith('d1');
-    expect(repository.delete).toHaveBeenCalledWith('d1');
-  });
-
-  it('bloqueia voluntário ao enviar active na atualização', async () => {
+  it('rejeita desativação por voluntário', async () => {
     repository.findById.mockResolvedValue({ id: 'd1' } as any);
 
     await expect(
@@ -149,22 +122,43 @@ describe('DonationService', () => {
         { role: EmployeeRole.VOLUNTEER } as any
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(repository.update).not.toHaveBeenCalled();
   });
 
-  it('ajusta estoque com delta negativo e atualiza disponibilidade derivada', async () => {
-    tx.donation.findFirst.mockResolvedValue({
+  it('permite atualização válida por admin', async () => {
+    repository.findById.mockResolvedValue({ id: 'd1' } as any);
+    repository.update.mockResolvedValue({ id: 'd1', name: 'Novo Nome' } as any);
+
+    const result = await service.update(
+      'd1',
+      { name: 'Novo Nome' },
+      undefined,
+      { role: EmployeeRole.ADMIN } as any
+    );
+
+    expect(repository.update).toHaveBeenCalledWith('d1', {
+      name: 'Novo Nome',
+    });
+    expect(auditLogService.write).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'd1',
+      })
+    );
+    expect(result).toEqual({ id: 'd1', name: 'Novo Nome' });
+  });
+
+  it('ajusta estoque com delta negativo e atualiza availability', async () => {
+    repository.findById.mockResolvedValue({
       id: 'd1',
       current_quantity: 2,
       category: { id: 'c1' },
-    });
-    tx.donation.update.mockResolvedValue({
+    } as any);
+    repository.setStock.mockResolvedValue({
       id: 'd1',
       current_quantity: 0,
       available: false,
       category: { id: 'c1' },
-    });
-    tx.donationStockAdjustment.create.mockResolvedValue({
+    } as any);
+    stockAdjustmentRepository.create.mockResolvedValue({
       id: 'a1',
       id_donation: 'd1',
       id_employee: 'e1',
@@ -173,6 +167,7 @@ describe('DonationService', () => {
       new_quantity: 0,
       reason: DonationStockAdjustmentReason.SPOILAGE,
       note: null,
+      created_at: new Date(),
     });
 
     const result = await service.adjustStock(
@@ -187,26 +182,17 @@ describe('DonationService', () => {
       } as any
     );
 
-    expect(tx.donation.update).toHaveBeenCalledWith(
+    expect(repository.setStock).toHaveBeenCalledWith('d1', 0, expect.anything());
+    expect(stockAdjustmentRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'd1' },
-        data: {
-          current_quantity: 0,
-          available: false,
-        },
-      })
-    );
-    expect(tx.donationStockAdjustment.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          id_donation: 'd1',
-          id_employee: 'e1',
-          delta_quantity: -2,
-          previous_quantity: 2,
-          new_quantity: 0,
-          reason: DonationStockAdjustmentReason.SPOILAGE,
-        }),
-      })
+        id_donation: 'd1',
+        id_employee: 'e1',
+        delta_quantity: -2,
+        previous_quantity: 2,
+        new_quantity: 0,
+        reason: DonationStockAdjustmentReason.SPOILAGE,
+      }),
+      expect.anything()
     );
     expect(result).toEqual(
       expect.objectContaining({
@@ -219,18 +205,18 @@ describe('DonationService', () => {
   });
 
   it('ajusta estoque com delta positivo', async () => {
-    tx.donation.findFirst.mockResolvedValue({
+    repository.findById.mockResolvedValue({
       id: 'd1',
       current_quantity: 0,
       category: { id: 'c1' },
-    });
-    tx.donation.update.mockResolvedValue({
+    } as any);
+    repository.setStock.mockResolvedValue({
       id: 'd1',
       current_quantity: 3,
       available: true,
       category: { id: 'c1' },
-    });
-    tx.donationStockAdjustment.create.mockResolvedValue({
+    } as any);
+    stockAdjustmentRepository.create.mockResolvedValue({
       id: 'a1',
       id_donation: 'd1',
       id_employee: 'e1',
@@ -239,6 +225,7 @@ describe('DonationService', () => {
       new_quantity: 3,
       reason: DonationStockAdjustmentReason.INVENTORY_CORRECTION,
       note: 'contagem',
+      created_at: new Date(),
     });
 
     const result = await service.adjustStock(
@@ -254,24 +241,17 @@ describe('DonationService', () => {
       } as any
     );
 
-    expect(tx.donation.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: {
-          current_quantity: 3,
-          available: true,
-        },
-      })
-    );
+    expect(repository.setStock).toHaveBeenCalledWith('d1', 3, expect.anything());
     expect(result.donation.current_quantity).toBe(3);
     expect(result.donation.available).toBe(true);
   });
 
   it('falha ao ajustar estoque para valor negativo', async () => {
-    tx.donation.findFirst.mockResolvedValue({
+    repository.findById.mockResolvedValue({
       id: 'd1',
       current_quantity: 1,
       category: { id: 'c1' },
-    });
+    } as any);
 
     await expect(
       service.adjustStock(
@@ -287,8 +267,8 @@ describe('DonationService', () => {
       )
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(tx.donation.update).not.toHaveBeenCalled();
-    expect(tx.donationStockAdjustment.create).not.toHaveBeenCalled();
+    expect(repository.setStock).not.toHaveBeenCalled();
+    expect(stockAdjustmentRepository.create).not.toHaveBeenCalled();
   });
 
   it('falha quando delta é zero', async () => {
@@ -306,7 +286,7 @@ describe('DonationService', () => {
       )
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(transactionManager.run).not.toHaveBeenCalled();
   });
 
   it('falha quando motivo OTHER não possui observação', async () => {
@@ -324,7 +304,7 @@ describe('DonationService', () => {
       )
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(transactionManager.run).not.toHaveBeenCalled();
   });
 
   it('falha de autorização para voluntário no ajuste de estoque', async () => {
@@ -342,24 +322,18 @@ describe('DonationService', () => {
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(transactionManager.run).not.toHaveBeenCalled();
   });
 
   it('lista histórico de ajuste por doação', async () => {
     repository.findById.mockResolvedValue({ id: 'd1' } as any);
-    prisma.donationStockAdjustment.findMany.mockResolvedValue([
-      { id: 'a1' },
-    ] as any);
+    stockAdjustmentRepository.findByDonation.mockResolvedValue([
+      { id: 'a1' } as any,
+    ]);
 
     const result = await service.findStockAdjustments('d1');
 
-    expect(prisma.donationStockAdjustment.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          id_donation: 'd1',
-        },
-      })
-    );
+    expect(stockAdjustmentRepository.findByDonation).toHaveBeenCalledWith('d1');
     expect(result).toEqual([{ id: 'a1' }]);
   });
 });

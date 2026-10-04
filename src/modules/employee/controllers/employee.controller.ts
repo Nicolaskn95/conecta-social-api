@@ -21,7 +21,7 @@ import { RolesGuard } from '@/common/guards/roles.guard';
 import { Roles } from '@/common/decorator/roles.decorator';
 import { LoggedUser } from '@/common/decorator/user.decorator';
 import { EmployeeRole } from '../enums/role.enum';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -34,7 +34,7 @@ import {
 @UseGuards(JwtAuthGuard)
 @Controller('employees')
 export class EmployeeController {
-  constructor(private readonly employeeService: EmployeeService) {}
+  constructor(private readonly employeeService: EmployeeService) { }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER)

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EmployeeRole, EventStatus } from '@prisma/client';
+import { EmployeeRole, EventStatus } from '@/domain/enums';
 import { RolesResponseDto } from '../dtos/roles-response.dto';
 import { EventStatusResponseDto } from '../dtos/event-status-response.dto';
 
@@ -10,10 +10,10 @@ export class ResourcesService {
       currentRole === EmployeeRole.MANAGER
         ? [{ label: 'Voluntário', value: EmployeeRole.VOLUNTEER }]
         : [
-      { label: 'Administrador', value: EmployeeRole.ADMIN },
-      { label: 'Gerente', value: EmployeeRole.MANAGER },
-      { label: 'Voluntário', value: EmployeeRole.VOLUNTEER },
-    ];
+          { label: 'Administrador', value: EmployeeRole.ADMIN },
+          { label: 'Gerente', value: EmployeeRole.MANAGER },
+          { label: 'Voluntário', value: EmployeeRole.VOLUNTEER },
+        ];
 
     return { roles };
   }

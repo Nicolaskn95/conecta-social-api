@@ -8,7 +8,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { LoggedUser } from '@/common/decorator/user.decorator';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 import { DashboardService } from './dashboard.service';
 import {
   DASHBOARD_PERIODS,
@@ -20,7 +20,7 @@ import {
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(private readonly dashboardService: DashboardService) { }
 
   @Get('overview')
   @ApiOperation({ summary: 'Obter visão geral agregada do dashboard' })

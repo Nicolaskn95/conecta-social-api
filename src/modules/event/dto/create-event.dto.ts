@@ -7,7 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EventStatus } from '@prisma/client';
+import { EventStatus } from '@/domain/enums';
 
 export class CreateEventDto {
   @ApiProperty({ example: 'Campanha de Natal', description: 'Nome do evento' })

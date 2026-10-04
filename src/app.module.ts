@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
-import { PrismaModule } from './config/prisma/prisma.module';
+import { DatabaseModule } from './infra/database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { EventModule } from './modules/event/event.module';
@@ -15,7 +15,7 @@ import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
 
 @Module({
   imports: [
-    PrismaModule,
+    DatabaseModule.forRoot(),
     AuthModule,
     EmployeeModule,
     EventModule,

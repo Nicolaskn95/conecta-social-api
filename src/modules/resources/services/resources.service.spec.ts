@@ -1,4 +1,4 @@
-import { EmployeeRole, EventStatus } from '@prisma/client';
+import { EmployeeRole, EventStatus } from '@/domain/enums';
 import { ResourcesService } from './resources.service';
 
 describe('ResourcesService', () => {

@@ -1,6 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { DonationStockAdjustmentReason } from '@prisma/client';
+import { DonationStockAdjustmentReason } from '@/domain/enums';
 import { CreateDonationStockAdjustmentDto } from './create-donation-stock-adjustment.dto';
 
 describe('CreateDonationStockAdjustmentDto', () => {

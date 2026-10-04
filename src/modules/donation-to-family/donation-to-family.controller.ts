@@ -17,7 +17,7 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { DonationToFamilyService } from './donation-to-family.service';
 import { CreateDonationToFamilyDto } from './dto/create-donation-to-family.dto';
 import { LoggedUser } from '@/common/decorator/user.decorator';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/domain/entities';
 
 @ApiTags('Donations to Family')
 @ApiBearerAuth()
@@ -26,7 +26,7 @@ import { Employee } from '@prisma/client';
 export class DonationToFamilyController {
   constructor(
     private readonly donationToFamilyService: DonationToFamilyService
-  ) {}
+  ) { }
 
   @Post()
   @ApiOperation({

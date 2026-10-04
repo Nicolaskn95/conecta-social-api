@@ -4,7 +4,6 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaService } from '@/config/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventBasicDto } from './dto/update-event-basic.dto';
 import { ErrorMessages } from '@/common/helper/error-messages';
@@ -12,23 +11,24 @@ import { InstagramContentService } from './services/instagram-content.service';
 import {
   AuditActionType,
   AuditEntityType,
-  Employee,
   EmployeeRole,
   EventStatus,
-} from '@prisma/client';
+} from '@/domain/enums';
+import { Employee } from '@/domain/entities';
+import { EventRepository } from '@/domain/repositories';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 
 @Injectable()
 export class EventService {
   constructor(
-    private prisma: PrismaService,
-    private instagramContentService: InstagramContentService,
+    private readonly eventRepository: EventRepository,
+    private readonly instagramContentService: InstagramContentService,
     private readonly auditLogService: AuditLogService
   ) {}
 
   async create(dto: CreateEventDto, actor?: Employee) {
     const eventData = await this.prepareEventData(dto);
-    const event = await this.prisma.event.create({ data: eventData });
+    const event = await this.eventRepository.create(eventData);
 
     await this.auditLogService.write({
       entityType: AuditEntityType.EVENT,
@@ -47,31 +47,30 @@ export class EventService {
   }
 
   private async prepareEventData(dto: CreateEventDto) {
-    if (dto.embedded_instagram) {
-      dto.embedded_instagram = this.instagramContentService.validateUrl(
-        dto.embedded_instagram
-      );
+    let embeddedInstagram = dto.embedded_instagram;
+    if (embeddedInstagram) {
+      embeddedInstagram =
+        this.instagramContentService.validateUrl(embeddedInstagram);
     }
 
     return {
       ...dto,
       date: new Date(dto.date),
+      embedded_instagram: embeddedInstagram,
       active: dto.active ?? true,
     };
   }
 
   findAll() {
-    return this.prisma.event.findMany();
+    return this.eventRepository.findAll();
   }
 
   findAllActives() {
-    return this.prisma.event.findMany({
-      where: { active: true },
-    });
+    return this.eventRepository.findAllActives();
   }
 
   async findOne(id: string) {
-    const event = await this.prisma.event.findUnique({ where: { id } });
+    const event = await this.eventRepository.findById(id);
 
     if (!event) {
       throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
@@ -83,12 +82,9 @@ export class EventService {
   async update(id: string, dto: UpdateEventBasicDto, actor?: Employee) {
     await this.findOne(id);
 
-    const event = await this.prisma.event.update({
-      where: { id },
-      data: {
-        ...dto,
-        date: dto.date ? new Date(dto.date) : undefined,
-      },
+    const event = await this.eventRepository.update(id, {
+      ...dto,
+      date: dto.date ? new Date(dto.date) : undefined,
     });
 
     await this.auditLogService.write({
@@ -108,16 +104,16 @@ export class EventService {
   async updateStatus(id: string, status: EventStatus, actor: Employee) {
     await this.findOne(id);
 
-    if (actor.role === EmployeeRole.VOLUNTEER && status !== EventStatus.COMPLETED) {
+    if (
+      actor.role === EmployeeRole.VOLUNTEER &&
+      status !== EventStatus.COMPLETED
+    ) {
       throw new ForbiddenException(
         'Voluntários só podem marcar eventos como concluídos.'
       );
     }
 
-    const event = await this.prisma.event.update({
-      where: { id },
-      data: { status },
-    });
+    const event = await this.eventRepository.update(id, { status });
 
     await this.auditLogService.write({
       entityType: AuditEntityType.EVENT,
@@ -136,10 +132,7 @@ export class EventService {
   async updateAttendance(id: string, attendance: number, actor?: Employee) {
     await this.findOne(id);
 
-    const event = await this.prisma.event.update({
-      where: { id },
-      data: { attendance },
-    });
+    const event = await this.eventRepository.update(id, { attendance });
 
     await this.auditLogService.write({
       entityType: AuditEntityType.EVENT,
@@ -166,9 +159,8 @@ export class EventService {
       ? this.instagramContentService.validateUrl(embeddedInstagram)
       : null;
 
-    const event = await this.prisma.event.update({
-      where: { id },
-      data: { embedded_instagram: normalizedInstagram },
+    const event = await this.eventRepository.update(id, {
+      embedded_instagram: normalizedInstagram,
     });
 
     await this.auditLogService.write({
@@ -188,10 +180,7 @@ export class EventService {
   async remove(id: string, actor?: Employee) {
     await this.findOne(id);
 
-    const event = await this.prisma.event.update({
-      where: { id },
-      data: { active: false },
-    });
+    const event = await this.eventRepository.update(id, { active: false });
 
     await this.auditLogService.write({
       entityType: AuditEntityType.EVENT,
@@ -206,19 +195,7 @@ export class EventService {
 
   async getUpcomingEvents(limit?: number) {
     const today = new Date();
-    const take = limit && limit > 0 ? limit : undefined;
-    const events = await this.prisma.event.findMany({
-      where: {
-        date: {
-          gte: today,
-        },
-        active: true,
-      },
-      orderBy: {
-        date: 'asc',
-      },
-      ...(take ? { take } : {}),
-    });
+    const events = await this.eventRepository.findUpcoming(today, limit);
 
     if (events.length === 0) {
       throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
@@ -229,18 +206,7 @@ export class EventService {
 
   async getRecentEvents(limit: number) {
     const today = new Date();
-    const events = await this.prisma.event.findMany({
-      where: {
-        date: {
-          lt: today,
-        },
-        active: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      take: limit,
-    });
+    const events = await this.eventRepository.findPast(today, limit);
 
     if (events.length === 0) {
       throw new NotFoundException(ErrorMessages.EVENT_NOT_FOUND);
@@ -251,7 +217,7 @@ export class EventService {
 
   async getRecentEventsWithInstagramEmbeds(limit = 5) {
     try {
-      const events = await this.fetchRecentWithInstagramLinks(limit);
+      const events = await this.eventRepository.findRecentWithInstagram(limit);
       if (!events.length) return [];
 
       const urls = this.extractUrls(events);
@@ -267,22 +233,6 @@ export class EventService {
         'Não foi possível obter embeds do Instagram'
       );
     }
-  }
-
-  private async fetchRecentWithInstagramLinks(limit: number) {
-    const events = await this.prisma.event.findMany({
-      where: {
-        active: true,
-        embedded_instagram: {
-          not: null,
-          notIn: [''],
-        },
-      },
-      orderBy: { date: 'desc' },
-      take: limit,
-    });
-
-    return events ?? [];
   }
 
   private extractUrls(events: any[]): string[] {
@@ -308,13 +258,8 @@ export class EventService {
 
     try {
       const [events, total] = await Promise.all([
-        this.prisma.event.findMany({
-          skip,
-          take: size,
-          orderBy: { date: 'desc' },
-          where: { active: true },
-        }),
-        this.prisma.event.count({ where: { active: true } }),
+        this.eventRepository.findPaginated(skip, size),
+        this.eventRepository.countActives(),
       ]);
 
       const totalPages = Math.ceil(total / size);

@@ -9,7 +9,7 @@ import {
   Length,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { EmployeeRole } from '@prisma/client';
+import { EmployeeRole } from '@/domain/enums';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEmployeeDto {

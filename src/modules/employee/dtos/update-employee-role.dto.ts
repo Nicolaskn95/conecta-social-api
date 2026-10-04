@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { EmployeeRole } from '@prisma/client';
+import { EmployeeRole } from '@/domain/enums';
 import { IsEnum } from 'class-validator';
 
 export class UpdateEmployeeRoleDto {

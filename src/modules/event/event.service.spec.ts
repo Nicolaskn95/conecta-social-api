@@ -1,19 +1,22 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventService } from './event.service';
-import { PrismaService } from '@/config/prisma/prisma.service';
 import { InstagramContentService } from './services/instagram-content.service';
-import { EmployeeRole, EventStatus } from '@prisma/client';
+import { EmployeeRole, EventStatus } from '@/domain/enums';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
+import { EventRepository } from '@/domain/repositories';
 
 describe('EventService', () => {
-  let prisma: {
-    event: {
-      create: jest.Mock;
-      findMany: jest.Mock;
-      findUnique: jest.Mock;
-      update: jest.Mock;
-      count: jest.Mock;
-    };
+  let eventRepository: {
+    create: jest.Mock;
+    findAll: jest.Mock;
+    findAllActives: jest.Mock;
+    findById: jest.Mock;
+    update: jest.Mock;
+    findUpcoming: jest.Mock;
+    findPast: jest.Mock;
+    findRecentWithInstagram: jest.Mock;
+    findPaginated: jest.Mock;
+    countActives: jest.Mock;
   };
   let instagramContentService: {
     validateUrl: jest.Mock;
@@ -25,14 +28,17 @@ describe('EventService', () => {
   let service: EventService;
 
   beforeEach(() => {
-    prisma = {
-      event: {
-        create: jest.fn(),
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn(),
-      },
+    eventRepository = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findAllActives: jest.fn(),
+      findById: jest.fn(),
+      update: jest.fn(),
+      findUpcoming: jest.fn(),
+      findPast: jest.fn(),
+      findRecentWithInstagram: jest.fn(),
+      findPaginated: jest.fn(),
+      countActives: jest.fn(),
     };
     instagramContentService = {
       validateUrl: jest.fn(),
@@ -43,7 +49,7 @@ describe('EventService', () => {
     };
 
     service = new EventService(
-      prisma as unknown as PrismaService,
+      eventRepository as unknown as EventRepository,
       instagramContentService as unknown as InstagramContentService,
       auditLogService as unknown as AuditLogService
     );
@@ -53,7 +59,7 @@ describe('EventService', () => {
     const dto = {
       name: 'Evento',
       date: '2025-12-24T18:00:00Z',
-      status: 'SCHEDULED',
+      status: EventStatus.SCHEDULED,
       cep: '01001-000',
       street: 'Rua',
       neighborhood: 'Centro',
@@ -66,32 +72,32 @@ describe('EventService', () => {
     instagramContentService.validateUrl.mockReturnValue(
       'https://insta/abc-normalized'
     );
-    prisma.event.create.mockResolvedValue({ id: '1', ...dto });
+    eventRepository.create.mockResolvedValue({ id: '1', ...dto });
 
     const result = await service.create(dto as any);
 
     expect(instagramContentService.validateUrl).toHaveBeenCalledWith(
       'https://insta/abc'
     );
-    expect(prisma.event.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+    expect(eventRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
         embedded_instagram: 'https://insta/abc-normalized',
         active: true,
         date: expect.any(Date),
-      }),
-    });
+      })
+    );
     expect(result).toBeDefined();
   });
 
   it('lança NotFound ao buscar evento inexistente', async () => {
-    prisma.event.findUnique.mockResolvedValue(null);
+    eventRepository.findById.mockResolvedValue(null);
     await expect(service.findOne('missing-id')).rejects.toBeInstanceOf(
       NotFoundException
     );
   });
 
   it('retorna embeds do instagram mesclados em eventos recentes', async () => {
-    prisma.event.findMany.mockResolvedValue([
+    eventRepository.findRecentWithInstagram.mockResolvedValue([
       { id: '1', embedded_instagram: 'url1', active: true },
       { id: '2', embedded_instagram: 'url2', active: true },
     ]);
@@ -111,21 +117,19 @@ describe('EventService', () => {
   });
 
   it('lança NotFound quando não há próximos eventos', async () => {
-    prisma.event.findMany.mockResolvedValue([]);
+    eventRepository.findUpcoming.mockResolvedValue([]);
     await expect(service.getUpcomingEvents()).rejects.toBeInstanceOf(
       NotFoundException
     );
   });
 
   it('retorna estrutura paginada em findAllPaginated', async () => {
-    prisma.event.findMany.mockResolvedValue([{ id: '1' }]);
-    prisma.event.count.mockResolvedValue(5);
+    eventRepository.findPaginated.mockResolvedValue([{ id: '1' }]);
+    eventRepository.countActives.mockResolvedValue(5);
 
     const result = await service.findAllPaginated(2, 2);
 
-    expect(prisma.event.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 2, take: 2 })
-    );
+    expect(eventRepository.findPaginated).toHaveBeenCalledWith(2, 2);
     expect(result).toEqual(
       expect.objectContaining({
         page: 2,
@@ -139,8 +143,8 @@ describe('EventService', () => {
   });
 
   it('permite voluntário marcar evento como concluído', async () => {
-    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
-    prisma.event.update.mockResolvedValue({
+    eventRepository.findById.mockResolvedValue({ id: 'event-1' });
+    eventRepository.update.mockResolvedValue({
       id: 'event-1',
       status: EventStatus.COMPLETED,
     });
@@ -151,30 +155,29 @@ describe('EventService', () => {
       { role: EmployeeRole.VOLUNTEER } as any
     );
 
-    expect(prisma.event.update).toHaveBeenCalledWith({
-      where: { id: 'event-1' },
-      data: { status: EventStatus.COMPLETED },
+    expect(eventRepository.update).toHaveBeenCalledWith('event-1', {
+      status: EventStatus.COMPLETED,
     });
     expect(result.status).toBe(EventStatus.COMPLETED);
   });
 
   it('bloqueia voluntário ao cancelar evento', async () => {
-    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
+    eventRepository.findById.mockResolvedValue({ id: 'event-1' });
 
     await expect(
       service.updateStatus('event-1', EventStatus.CANCELED, {
         role: EmployeeRole.VOLUNTEER,
       } as any)
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.event.update).not.toHaveBeenCalled();
+    expect(eventRepository.update).not.toHaveBeenCalled();
   });
 
   it('valida link do instagram ao atualizar publicação', async () => {
-    prisma.event.findUnique.mockResolvedValue({ id: 'event-1' });
+    eventRepository.findById.mockResolvedValue({ id: 'event-1' });
     instagramContentService.validateUrl.mockReturnValue(
       'https://www.instagram.com/p/abc/'
     );
-    prisma.event.update.mockResolvedValue({
+    eventRepository.update.mockResolvedValue({
       id: 'event-1',
       embedded_instagram: 'https://www.instagram.com/p/abc/',
     });
@@ -184,9 +187,8 @@ describe('EventService', () => {
     expect(instagramContentService.validateUrl).toHaveBeenCalledWith(
       'https://instagram.com/p/abc'
     );
-    expect(prisma.event.update).toHaveBeenCalledWith({
-      where: { id: 'event-1' },
-      data: { embedded_instagram: 'https://www.instagram.com/p/abc/' },
+    expect(eventRepository.update).toHaveBeenCalledWith('event-1', {
+      embedded_instagram: 'https://www.instagram.com/p/abc/',
     });
   });
 });
