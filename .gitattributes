@@ -1,0 +1,3 @@
+# Scripts shell precisam de LF para executar em containers Linux,
+# mesmo quando o repositorio e clonado no Windows (core.autocrlf=true).
+*.sh text eol=lf
