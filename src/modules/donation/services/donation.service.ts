@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
@@ -32,6 +33,8 @@ type DonationWithImage = {
 
 @Injectable()
 export class DonationService {
+  private readonly logger = new Logger(DonationService.name);
+
   constructor(
     private readonly donationRepository: DonationRepository,
     private readonly donationStockAdjustmentRepository: DonationStockAdjustmentRepository,
@@ -297,8 +300,19 @@ export class DonationService {
   }
 
   private async withSignedImageUrl<T extends DonationWithImage>(donation: T) {
-    const imageUrl =
-      await this.donationImageService.getSignedImageUrl(donation);
+    let imageUrl: string | null;
+
+    // Falha ao assinar a imagem (S3 indisponível ou não configurado) não pode derrubar a doação
+    try {
+      imageUrl = await this.donationImageService.getSignedImageUrl(donation);
+    } catch (error) {
+      this.logger.warn(
+        `Não foi possível assinar a imagem ${donation.image_key}: ${
+          error instanceof Error ? error.message : error
+        }`
+      );
+      return donation;
+    }
 
     if (!imageUrl) {
       return donation;

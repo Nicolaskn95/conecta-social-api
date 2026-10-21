@@ -5,7 +5,7 @@ import {
   AuditActionType,
   AuditEntityType,
   EmployeeRole,
-} from '@/domain/enums';
+} from '../../../../domain/enums';
 
 @Schema({
   collection: 'audit_logs',

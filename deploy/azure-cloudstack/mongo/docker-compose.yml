@@ -1,0 +1,39 @@
+# Pilha de teste da API com MongoDB (DATABASE_PROVIDER=mongo), paralela a pilha PostgreSQL em ~/conecta.
+# Compartilha a rede conecta_default para o Caddy alcancar a api-mongo.
+services:
+  mongo:
+    # 4.4: ultima versao que roda sem AVX (a CPU da VM KVM do CloudStack nao expoe AVX)
+    image: mongo:4.4
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      # inicia o replica set na primeira subida; so fica healthy quando o no for PRIMARY
+      test: ["CMD", "mongo", "--quiet", "--eval", "if (!rs.status().ok) { rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"mongo:27017\"}]}) }; quit(db.isMaster().ismaster ? 0 : 1)"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  api-mongo:
+    # imagem oficial; o seed Mongo pelo entrypoint depende da correcao do tsconfig.seed.json deste PR
+    image: maiconmaul/conecta-social-api:latest
+    restart: always
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file: ../conecta/.env
+    environment:
+      DATABASE_PROVIDER: mongo
+      MONGODB_URI: mongodb://mongo:27017/conecta_social?replicaSet=rs0
+      DATABASE_URL: ""
+      RUN_MIGRATIONS: "false"
+      RUN_SEED: "true"
+
+volumes:
+  mongo_data:
+
+networks:
+  default:
+    name: conecta_default
+    external: true
