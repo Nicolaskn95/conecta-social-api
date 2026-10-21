@@ -66,3 +66,32 @@ Ver a versão em produção e o histórico:
 ```bash
 ssh conecta-vm 'sudo docker exec conecta-api-1 grep -m1 "\"version\"" package.json; sudo tail /var/log/atualizar-conecta.log'
 ```
+
+## Pilha de teste com MongoDB
+
+API com `DATABASE_PROVIDER=mongo` em **https://mongo.57-156-63-84.sslip.io**, paralela à pilha PostgreSQL, na mesma `vm-conecta-social` (`~/conecta-mongo`, arquivo [`mongo/docker-compose.yml`](mongo/docker-compose.yml)). Compartilha a rede `conecta_default` e o `.env` da pilha principal. O Caddy ganhou o bloco:
+
+```
+mongo.57-156-63-84.sslip.io {
+	encode gzip
+	reverse_proxy api-mongo:3001
+}
+```
+
+- **MongoDB 4.4**: a CPU da VM KVM do CloudStack não expõe AVX, exigido a partir do MongoDB 5.
+- **Replica set `rs0`**: a API usa transações (`MongoTransactionManager`), que não funcionam em Mongo standalone. O healthcheck inicia o replica set na primeira subida.
+
+### Dados do dump do PostgreSQL
+
+Restaurar `defaultdb.dump` num PostgreSQL 16 temporário e rodar o script do projeto `migrate:pg-to-mongo` (converte para os schemas Mongoose, preferível ao `mongoimport` de JSON cru):
+
+```bash
+sudo docker run -d --name pg-migracao --network conecta_default -e POSTGRES_PASSWORD=migracao -e POSTGRES_DB=migracao -v $PWD/defaultdb.dump:/defaultdb.dump:ro postgres:16-alpine
+sudo docker exec pg-migracao pg_restore --no-owner --no-acl -U postgres --dbname=migracao /defaultdb.dump
+# na pasta com src/, scripts/ e tsconfig.json do repositório:
+sudo docker run --rm --network conecta_default -v $PWD/src:/app/src:ro -v $PWD/scripts:/app/scripts:ro -v $PWD/tsconfig.json:/app/tsconfig.json:ro \
+  -e DATABASE_URL=postgresql://postgres:migracao@pg-migracao:5432/migracao -e "MONGODB_URI=mongodb://mongo:27017/conecta_social?replicaSet=rs0" \
+  --entrypoint yarn maiconmaul/conecta-social-api:latest -s migrate:pg-to-mongo
+```
+
+Resultado: 5 funcionários, 7 categorias, 6 famílias, 17 eventos, 4 doações, 2 entregas e 8 logs, com contagem igual nas duas bases. Login, listagens, dashboard e uma entrega a família (transação, estoque 10 → 9) testados de fora pelo HTTPS.
