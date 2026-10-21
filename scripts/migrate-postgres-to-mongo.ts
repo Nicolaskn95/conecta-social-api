@@ -100,7 +100,8 @@ async function main() {
         };
       });
 
-      const res = await model.bulkWrite(ops);
+      // timestamps: false preserva created_at/updated_at vindos do Postgres
+      const res = await model.bulkWrite(ops, { timestamps: false });
       console.log(
         `  Inseridos/Atualizados: ${res.upsertedCount + res.modifiedCount} registros.`
       );

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { randomUUID } from 'crypto';
-import { DonationStockAdjustmentReason } from '@/domain/enums';
+import { DonationStockAdjustmentReason } from '../../../../domain/enums';
 
 @Schema({
   collection: 'donation_stock_adjustments',

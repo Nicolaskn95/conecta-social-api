@@ -111,6 +111,25 @@ describe('DonationService', () => {
     );
   });
 
+  it('lista doações sem image_url quando a assinatura da imagem falha', async () => {
+    repository.findAll.mockResolvedValue([
+      { id: 'd1', image_key: 'key', image_bucket: 'bucket' },
+      { id: 'd2', image_key: null, image_bucket: null },
+    ] as any);
+    imageService.getSignedImageUrl.mockImplementation(async (donation: any) => {
+      if (donation.image_key) {
+        throw new Error('AWS_REGION não configurada');
+      }
+      return null;
+    });
+
+    const result = await service.findAll();
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).not.toHaveProperty('image_url');
+    expect(result[0]).toEqual(expect.objectContaining({ id: 'd1' }));
+  });
+
   it('rejeita desativação por voluntário', async () => {
     repository.findById.mockResolvedValue({ id: 'd1' } as any);
 
