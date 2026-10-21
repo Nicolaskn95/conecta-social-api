@@ -1,0 +1,60 @@
+# Deploy da Conecta Social API em VM do Apache CloudStack (host na Azure)
+# Uso na VM: docker compose --env-file .env up -d
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: conecta
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      POSTGRES_DB: conecta_social
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U conecta -d conecta_social']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # sem "ports": o banco nao fica exposto na internet
+
+  api:
+    image: maiconmaul/conecta-social-api:latest # imagem oficial publicada pela pipeline (CI/CD)
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_PROVIDER: postgres
+      DATABASE_URL: ${DATABASE_URL:?defina DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1d}
+      RUN_MIGRATIONS: 'true'
+      RUN_SEED: 'true'
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@conecta.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_NAME: ${ADMIN_NAME:-Admin}
+      ADMIN_SURNAME: ${ADMIN_SURNAME:-Root}
+      ADMIN_ROLE: ${ADMIN_ROLE:-ADMIN}
+    expose:
+      - '3001'
+    mem_limit: 512m
+
+  caddy:
+    image: caddy:2
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

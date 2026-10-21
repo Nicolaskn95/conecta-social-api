@@ -1,0 +1,14 @@
+# HTTPS automatico (Let's Encrypt). Trafego: IP publico Azure -> DNAT no host -> IP publico CloudStack -> Virtual Router -> esta VM
+
+# API do Conecta Social
+57-156-63-84.sslip.io {
+	encode gzip
+	reverse_proxy api:3001
+}
+
+# Painel do Apache CloudStack (Management Server no host, alcancado pela rede publica do CloudStack)
+painel.57-156-63-84.sslip.io {
+	encode gzip
+	redir / /client/ 302
+	reverse_proxy 192.168.200.1:8080
+}
