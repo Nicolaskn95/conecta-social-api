@@ -34,9 +34,17 @@ Senhas e segredos ficam em `Downloads\azure-cloudstack.local.env` (fora do Git).
 
 ## Custos e proteções
 
-- VM desalocada não consome crédito de CPU; disco e IP fixo custam ~US$ 17/mês.
+Preços de varejo da Azure em Chile Central (a assinatura é faturada em BRL):
+
+| Item | Custo |
+| --- | --- |
+| VM D4s_v4 ligada | R$ 1,40/hora |
+| Disco 128 GB Standard SSD (E10) | R$ 70/mês, mesmo com a VM desligada |
+| IP público fixo | R$ 19/mês, mesmo com a VM desligada |
+
+- VM desalocada não consome crédito de CPU; só disco e IP continuam cobrando (~R$ 89/mês).
 - Timer `desalocar-vm.timer` no host desaloca a VM todo dia às 02:00 UTC (23:00 Brasília) usando a identidade gerenciada da própria VM.
-- Orçamento `orcamento-cloudstack` (US$ 60/mês) com alertas por e-mail em 50% e 90%.
+- Orçamento `orcamento-cloudstack` de R$ 60/mês, configurado na assinatura Azure (Cost Management), não no Docker Compose. É só um **alerta**, não um limite de gasto: envia e-mail ao dono da assinatura quando o gasto real do mês passa de 50% e de 90% do valor.
 
 ## Ao religar
 
