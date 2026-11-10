@@ -1,4 +1,6 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateBeneficiaryDto } from './create-beneficiary.dto';
 
-export class UpdateBeneficiaryDto extends PartialType(CreateBeneficiaryDto) {}
+export class UpdateBeneficiaryDto extends PartialType(
+  OmitType(CreateBeneficiaryDto, ['active'] as const)
+) {}

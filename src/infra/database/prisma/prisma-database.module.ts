@@ -24,9 +24,12 @@ import { DonationToFamilyPrismaRepository } from './repositories/donation-to-fam
 import { DonationStockAdjustmentPrismaRepository } from './repositories/donation-stock-adjustment.prisma.repository';
 import { AuditLogPrismaRepository } from './repositories/audit-log.prisma.repository';
 import { DashboardPrismaRepository } from './repositories/dashboard.prisma.repository';
+import { BeneficiaryRepository } from '@/modules/beneficiary/beneficiary.repository';
+import { BeneficiaryPrismaRepository } from './repositories/beneficiary.prisma.repository';
 
 const providers = [
   PrismaService,
+  { provide: BeneficiaryRepository, useClass: BeneficiaryPrismaRepository },
   {
     provide: TransactionManager,
     useClass: PrismaTransactionManager,
