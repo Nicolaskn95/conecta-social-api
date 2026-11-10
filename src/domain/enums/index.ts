@@ -30,6 +30,7 @@ export enum AuditEntityType {
   DONATION_TO_FAMILY = 'DONATION_TO_FAMILY',
   FAMILY = 'FAMILY',
   EVENT = 'EVENT',
+  BENEFICIARY = 'BENEFICIARY',
 }
 
 export enum AuditActionType {

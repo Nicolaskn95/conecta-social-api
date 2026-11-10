@@ -1,249 +1,68 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AuditActionType, AuditEntityType } from '@prisma/client';
-import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 import { BeneficiaryService } from './beneficiary.service';
+import { AuditActionType, AuditEntityType } from '@/domain/enums';
 
 describe('BeneficiaryService', () => {
+  const ctx = { __transactionContext: true } as const;
+  let repository: any;
+  let families: any;
+  let transactions: any;
+  let audit: any;
   let service: BeneficiaryService;
-  let prisma: any;
-  let auditLogService: jest.Mocked<AuditLogService>;
-
+  const dto = {
+    id_family: 'family-1', name: 'Maria', surname: 'Silva',
+    birth_date: '1990-01-01', gender: 'Feminino', has_disability: false,
+  };
   beforeEach(() => {
-    prisma = {
-      family: {
-        findFirst: jest.fn(),
-      },
-      beneficiary: {
-        findFirst: jest.fn(),
-        findMany: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn(),
-      },
-    };
-
-    auditLogService = {
-      write: jest.fn(),
-    } as any;
-
-    service = new BeneficiaryService(prisma, auditLogService);
+    repository = { create: jest.fn(), update: jest.fn(), findById: jest.fn(), findAll: jest.fn(), count: jest.fn(), suggestions: jest.fn() };
+    families = { findActiveById: jest.fn().mockResolvedValue({ id: 'family-1' }) };
+    transactions = { run: jest.fn(work => work(ctx)) };
+    audit = { write: jest.fn() };
+    service = new BeneficiaryService(repository, families, transactions, audit);
   });
 
-  it('cria beneficiário e limpa disability_details quando has_disability for false', async () => {
-    prisma.family.findFirst.mockResolvedValue({ id: 'family-1' });
-    prisma.beneficiary.create.mockResolvedValue({
-      id: 'beneficiary-1',
-      id_family: 'family-1',
-      has_disability: false,
-    });
-    prisma.beneficiary.findFirst.mockResolvedValue({
-      id: 'beneficiary-1',
-      id_family: 'family-1',
-      name: 'Maria',
-      surname: 'Silva',
-      has_disability: false,
-      disability_details: null,
-      family: { id: 'family-1', name: 'Família Silva' },
-    });
-
-    const result = await service.create(
-      {
-        id_family: 'family-1',
-        name: 'Maria',
-        surname: 'Silva',
-        birth_date: '1990-01-01',
-        cpf: '123.456.789-01',
-        rg: '1234567',
-        email: 'maria@email.com',
-        phone: '(11) 99999-9999',
-        has_disability: false,
-        disability_details: 'visual',
-        gender: 'Feminino',
-      },
-      { id: 'employee-1', role: 'MANAGER' } as any
-    );
-
-    expect(prisma.beneficiary.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          cpf: '12345678901',
-          has_disability: false,
-          disability_details: null,
-        }),
-      })
-    );
-
-    expect(auditLogService.write).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entityType: AuditEntityType.BENEFICIARY,
-        actionType: AuditActionType.CREATE,
-      })
-    );
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        id: 'beneficiary-1',
-      })
-    );
+  it('cria e audita usando a mesma transação, normalizando CPF', async () => {
+    repository.create.mockResolvedValue({ id: 'b1', id_family: 'family-1' });
+    await service.create({ ...dto, cpf: '123.456.789-01', disability_details: 'Visual' });
+    expect(repository.create).toHaveBeenCalledWith(expect.objectContaining({
+      cpf: '12345678901', disability_details: null, active: true,
+    }), ctx);
+    expect(audit.write).toHaveBeenCalledWith(expect.objectContaining({
+      ctx, entityType: AuditEntityType.BENEFICIARY, actionType: AuditActionType.CREATE,
+    }));
   });
 
-  it('falha ao criar quando família não existe ou está inativa', async () => {
-    prisma.family.findFirst.mockResolvedValue(null);
-
-    await expect(
-      service.create({
-        id_family: 'family-1',
-        name: 'João',
-        surname: 'Oliveira',
-        birth_date: '1992-02-02',
-        has_disability: false,
-        gender: 'Masculino',
-      } as any)
-    ).rejects.toBeInstanceOf(NotFoundException);
+  it('exige família ativa e detalhes da deficiência', async () => {
+    await expect(service.create({ ...dto, has_disability: true })).rejects.toBeInstanceOf(BadRequestException);
+    families.findActiveById.mockResolvedValue(null);
+    await expect(service.create(dto)).rejects.toBeInstanceOf(NotFoundException);
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
-  it('falha no update quando has_disability final é true sem details', async () => {
-    prisma.beneficiary.findFirst.mockResolvedValue({
-      id: 'beneficiary-1',
-      id_family: 'family-1',
-      name: 'João',
-      surname: 'Silva',
-      birth_date: new Date('1990-01-01'),
-      cpf: null,
-      rg: null,
-      email: null,
-      phone: null,
-      has_disability: false,
-      disability_details: null,
-      gender: 'Masculino',
-      active: true,
-      family: { id: 'family-1' },
-    });
-
-    await expect(
-      service.update('beneficiary-1', {
-        has_disability: true,
-      })
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(prisma.beneficiary.update).not.toHaveBeenCalled();
+  it('limpa deficiência ao atualizar e audita na mesma transação', async () => {
+    repository.findById.mockResolvedValue({ id: 'b1', id_family: 'family-1', has_disability: true, disability_details: 'Visual' });
+    repository.update.mockResolvedValue({ id: 'b1' });
+    await service.update('b1', { has_disability: false });
+    expect(repository.update).toHaveBeenCalledWith('b1', expect.objectContaining({ has_disability: false, disability_details: null }), ctx);
+    expect(audit.write).toHaveBeenCalledWith(expect.objectContaining({ ctx, actionType: AuditActionType.UPDATE }));
   });
 
-  it('limpa disability_details no update quando has_disability for false', async () => {
-    prisma.beneficiary.findFirst
-      .mockResolvedValueOnce({
-        id: 'beneficiary-1',
-        id_family: 'family-1',
-        name: 'João',
-        surname: 'Silva',
-        birth_date: new Date('1990-01-01'),
-        cpf: null,
-        rg: null,
-        email: null,
-        phone: null,
-        has_disability: true,
-        disability_details: 'Visual',
-        gender: 'Masculino',
-        active: true,
-        family: { id: 'family-1' },
-      })
-      .mockResolvedValueOnce({
-        id: 'beneficiary-1',
-        id_family: 'family-1',
-        name: 'João',
-        surname: 'Silva',
-        has_disability: false,
-        disability_details: null,
-        family: { id: 'family-1', name: 'Família Silva' },
-      });
-
-    prisma.beneficiary.update.mockResolvedValue({
-      id: 'beneficiary-1',
-      id_family: 'family-1',
-      has_disability: false,
-      disability_details: null,
-    });
-
-    await service.update('beneficiary-1', {
-      has_disability: false,
-      disability_details: 'Visual',
-    });
-
-    expect(prisma.beneficiary.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          has_disability: false,
-          disability_details: null,
-        }),
-      })
-    );
+  it('rejeita CPF duplicado do MongoDB', async () => {
+    repository.create.mockRejectedValue({ code: 11000, keyPattern: { cpf: 1 } });
+    await expect(service.create(dto)).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('faz soft delete do beneficiário', async () => {
-    prisma.beneficiary.findFirst.mockResolvedValue({
-      id: 'beneficiary-1',
-      id_family: 'family-1',
-      family: { id: 'family-1' },
-    });
-    prisma.beneficiary.update.mockResolvedValue({
-      id: 'beneficiary-1',
-      active: false,
-    });
-
-    const result = await service.remove('beneficiary-1', {
-      id: 'employee-1',
-      role: 'ADMIN',
-    } as any);
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        active: false,
-      })
-    );
-
-    expect(auditLogService.write).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entityType: AuditEntityType.BENEFICIARY,
-        actionType: AuditActionType.SOFT_DELETE,
-      })
-    );
+  it('propaga falha de auditoria para reverter a transação', async () => {
+    repository.create.mockResolvedValue({ id: 'b1' });
+    audit.write.mockRejectedValue(new Error('audit failed'));
+    await expect(service.create(dto)).rejects.toThrow('audit failed');
   });
 
-  it('retorna sugestões de deficiência sem valores vazios', async () => {
-    prisma.beneficiary.findMany.mockResolvedValue([
-      { disability_details: 'Auditiva' },
-      { disability_details: 'Visual' },
-      { disability_details: '   ' },
-    ]);
-
-    const suggestions = await service.findDisabilitySuggestions({
-      limit: 10,
-      search: 'vi',
-    });
-
-    expect(prisma.beneficiary.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          active: true,
-          has_disability: true,
-        }),
-      })
-    );
-
-    expect(suggestions).toEqual(['Auditiva', 'Visual']);
-  });
-
-  it('aplica filtro de ativos por padrão no findAll', async () => {
-    prisma.beneficiary.findMany.mockResolvedValue([]);
-
-    await service.findAll({});
-
-    expect(prisma.beneficiary.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          active: true,
-        }),
-      })
-    );
+  it('desativa e audita na mesma transação', async () => {
+    repository.findById.mockResolvedValue({ id: 'b1' });
+    repository.update.mockResolvedValue({ id: 'b1', active: false });
+    await service.remove('b1');
+    expect(repository.update).toHaveBeenCalledWith('b1', { active: false }, ctx);
+    expect(audit.write).toHaveBeenCalledWith(expect.objectContaining({ ctx, actionType: AuditActionType.SOFT_DELETE }));
   });
 });

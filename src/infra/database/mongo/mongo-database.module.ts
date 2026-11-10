@@ -40,8 +40,12 @@ import { DonationToFamilyMongoRepository } from './repositories/donation-to-fami
 import { DonationStockAdjustmentMongoRepository } from './repositories/donation-stock-adjustment.mongo.repository';
 import { AuditLogMongoRepository } from './repositories/audit-log.mongo.repository';
 import { DashboardMongoRepository } from './repositories/dashboard.mongo.repository';
+import { BeneficiaryRepository } from '@/modules/beneficiary/beneficiary.repository';
+import { BeneficiaryMongoRepository } from './repositories/beneficiary.mongo.repository';
+import { BeneficiaryDoc, BeneficiarySchema } from './schemas/beneficiary.schema';
 
 const featureSchemas = [
+  { name: BeneficiaryDoc.name, schema: BeneficiarySchema },
   { name: EmployeeDoc.name, schema: EmployeeSchema },
   { name: EventDoc.name, schema: EventSchema },
   { name: FamilyDoc.name, schema: FamilySchema },
@@ -56,6 +60,7 @@ const featureSchemas = [
 ];
 
 const providers = [
+  { provide: BeneficiaryRepository, useClass: BeneficiaryMongoRepository },
   {
     provide: TransactionManager,
     useClass: MongoTransactionManager,
