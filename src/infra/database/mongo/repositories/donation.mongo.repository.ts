@@ -9,7 +9,7 @@ import {
 } from '@/domain/repositories';
 import { TransactionContext } from '@/domain/transaction/transaction-manager';
 import { DonationDoc } from '../schemas';
-import { toEntity, toEntityList } from '../mappers/to-entity';
+import { toEntity, toDonationEntity } from '../mappers/to-entity';
 import { resolveMongoSession } from '../mongo-transaction-manager';
 
 @Injectable()
@@ -42,7 +42,7 @@ export class DonationMongoRepository extends DonationRepository {
 
   private mapDonationWithCategory(doc: any): DonationWithCategory {
     if (!doc) return null as unknown as DonationWithCategory;
-    const donation = toEntity<any>(doc);
+    const donation = toDonationEntity<DonationWithCategory>(doc);
     if (donation.category) {
       donation.category = toEntity<any>(donation.category);
     }
@@ -93,12 +93,13 @@ export class DonationMongoRepository extends DonationRepository {
 
   async findById(
     id: string,
-    ctx?: TransactionContext
+    ctx?: TransactionContext,
+    includeInactive = false
   ): Promise<DonationWithCategory | null> {
     const session = resolveMongoSession(ctx);
     const docs = await this.donationModel.aggregate(
       [
-        { $match: { _id: id, active: true } },
+        { $match: { _id: id, ...(includeInactive ? {} : { active: true }) } },
         ...this.getLookupPipeline(),
       ],
       { session }
@@ -147,57 +148,18 @@ export class DonationMongoRepository extends DonationRepository {
     return this.donationModel.countDocuments({ active: true }).exec();
   }
 
-  async decrementStockIfAvailable(
-    id: string,
-    quantity: number,
-    ctx?: TransactionContext
-  ): Promise<Donation | null> {
-    const session = resolveMongoSession(ctx);
-
-    const updated = await this.donationModel.findOneAndUpdate(
-      {
-        _id: id,
-        active: true,
-        current_quantity: { $gte: quantity },
-      },
-      {
-        $inc: { current_quantity: -quantity },
-      },
-      { new: true, session }
-    );
-
-    if (!updated) {
-      return null;
-    }
-
-    const available = updated.current_quantity > 0;
-    if (updated.available !== available) {
-      updated.available = available;
-      await updated.save({ session });
-    }
-
-    return toEntity<Donation>(updated);
-  }
-
   async setStock(
     id: string,
+    expectedQuantity: number,
     newQuantity: number,
-    ctx?: TransactionContext
-  ): Promise<DonationWithCategory> {
-    const session = resolveMongoSession(ctx);
-
-    await this.donationModel.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          current_quantity: newQuantity,
-          available: newQuantity > 0,
-        },
-      },
-      { new: true, session }
-    );
-
-    const updated = await this.findById(id, ctx);
-    return updated!;
+    ctx: TransactionContext,
+    includeInactive = false
+  ): Promise<DonationWithCategory | null> {
+    const result = await this.donationModel.updateOne(
+      { _id: id, current_quantity: expectedQuantity, ...(includeInactive ? {} : { active: true }) },
+      { $set: { current_quantity: newQuantity, available: newQuantity > 0 } },
+      { session: resolveMongoSession(ctx) }
+    ).exec();
+    return result.matchedCount ? this.findById(id, ctx, includeInactive) : null;
   }
 }

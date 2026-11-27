@@ -29,6 +29,7 @@ enum DonationStockAdjustmentReason {
 }
 
 enum AuditEntityType {
+  NEED
   DONATION
   DONATION_TO_FAMILY
   FAMILY
@@ -48,6 +49,11 @@ enum AuditActionType {
 }
 
 model Employee {
+  needs         Need[]
+  separations   DonationToFamily[] @relation("SeparatedBy")
+  confirmations DonationToFamily[] @relation("ConfirmedBy")
+  cancellations DonationToFamily[] @relation("CanceledBy")
+
   id         String   @id @default(uuid())
   name       String   @db.VarChar(30)
   surname    String   @db.VarChar(60)
@@ -119,6 +125,11 @@ model LogEmployeeEvent {
 }
 
 model Family {
+  monthly_income_cents    Int?
+  housing_description     String?       @db.VarChar(250)
+  preferred_delivery_mode DeliveryMode?
+  needs                   Need[]
+
   id                  String             @id @default(uuid())
   name                String             @db.VarChar(60)
   street              String             @db.VarChar(60)
@@ -137,6 +148,10 @@ model Family {
 }
 
 model Beneficiary {
+  needs_revision Int                @default(0)
+  needs          Need[]
+  allocations    DonationToFamily[]
+
   id                 String   @id @default(uuid())
   id_family          String
   name               String   @db.VarChar(30)
@@ -162,6 +177,8 @@ model Beneficiary {
 }
 
 model Category {
+  item_types ItemType[]
+
   id            String   @id @default(uuid())
   name          String   @db.VarChar(25)
   measure_unity String   @db.VarChar(10)
@@ -174,6 +191,11 @@ model Category {
 }
 
 model Donation {
+  item_type_id   String?
+  condition      DonationCondition?
+  specifications Json?
+  item_type      ItemType?          @relation(fields: [item_type_id], references: [id], onDelete: Restrict)
+
   id                  String   @id @default(uuid())
   category_id         String
   name                String   @db.VarChar(60)
@@ -196,10 +218,30 @@ model Donation {
   donations_to_family DonationToFamily[]
   stock_adjustments   DonationStockAdjustment[]
 
+  @@index([item_type_id])
   @@map("donations")
 }
 
 model DonationToFamily {
+  id_beneficiary      String?
+  id_need             String?
+  status              DonationAllocationStatus @default(UNKNOWN)
+  delivery_mode       DeliveryMode?
+  received_at         DateTime?
+  separated_at        DateTime?
+  confirmed_at        DateTime?
+  canceled_at         DateTime?
+  separated_by        String?
+  confirmed_by        String?
+  canceled_by         String?
+  request_id          String?
+  request_fingerprint String?                  @db.VarChar(64)
+  beneficiary         Beneficiary?             @relation(fields: [id_beneficiary], references: [id], onDelete: Restrict)
+  need                Need?                    @relation(fields: [id_need], references: [id], onDelete: Restrict)
+  separator           Employee?                @relation("SeparatedBy", fields: [separated_by], references: [id], onDelete: SetNull)
+  confirmer           Employee?                @relation("ConfirmedBy", fields: [confirmed_by], references: [id], onDelete: SetNull)
+  canceler            Employee?                @relation("CanceledBy", fields: [canceled_by], references: [id], onDelete: SetNull)
+
   id             String   @id @default(uuid())
   id_donation    String
   id_family      String
@@ -212,6 +254,9 @@ model DonationToFamily {
   donation Donation @relation(fields: [id_donation], references: [id])
   family   Family   @relation(fields: [id_family], references: [id])
 
+  @@index([id_beneficiary])
+  @@index([id_need, status])
+  @@index([status, separated_at])
   @@index([id_donation])
   @@index([id_family])
   @@map("donations_to_family")
@@ -253,4 +298,71 @@ model AuditLog {
   @@index([actor_employee_id, created_at])
   @@index([created_at])
   @@map("audit_logs")
+}
+
+enum DeliveryMode {
+  PICKUP
+  DELIVERY
+}
+
+enum DonationCondition {
+  NEW
+  USED_GOOD
+  REQUIRES_REVIEW
+}
+
+enum NeedStatus {
+  OPEN
+  FULFILLED
+  CLOSED
+}
+
+enum DonationAllocationStatus {
+  UNKNOWN
+  WAITING_RECEIPT
+  COMPLETED
+  CANCELED
+}
+
+model ItemType {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  name        String
+  category_id String
+  aliases     String[]   @default([])
+  active      Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  category    Category   @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  donations   Donation[]
+  needs       Need[]
+
+  @@index([category_id, active])
+  @@map("item_types")
+}
+
+model Need {
+  id                 String             @id @default(uuid())
+  id_family          String
+  id_beneficiary     String?
+  item_type_id       String?
+  description        String?            @db.VarChar(500)
+  requested_quantity Int?
+  specifications     Json?
+  status             NeedStatus         @default(OPEN)
+  created_by         String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  version            Int                @default(0)
+  family             Family             @relation(fields: [id_family], references: [id], onDelete: Restrict)
+  beneficiary        Beneficiary?       @relation(fields: [id_beneficiary], references: [id], onDelete: Restrict)
+  item_type          ItemType?          @relation(fields: [item_type_id], references: [id], onDelete: Restrict)
+  creator            Employee?          @relation(fields: [created_by], references: [id], onDelete: SetNull)
+  allocations        DonationToFamily[]
+
+  @@index([id_family, status, created_at])
+  @@index([id_beneficiary, status, created_at])
+  @@index([status, item_type_id, created_at])
+  @@index([item_type_id])
+  @@map("needs")
 }

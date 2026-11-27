@@ -1,3 +1,4 @@
+import { DonationComplementsDto } from './donation-complements.dto';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
@@ -20,7 +21,7 @@ const optionalBoolean = ({ value }: { value: unknown }) => {
   return value;
 };
 
-export class UpdateDonationDto {
+export class UpdateDonationDto extends DonationComplementsDto {
   @IsOptional()
   @Transform(emptyToUndefined)
   @IsUUID()

@@ -6,3 +6,5 @@ export * from './donation.schema';
 export * from './donation-to-family.schema';
 export * from './donation-stock-adjustment.schema';
 export * from './audit-log.schema';
+export * from './item-type.schema';
+export * from './need.schema';

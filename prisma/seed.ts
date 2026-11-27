@@ -1,3 +1,7 @@
+import {
+  defaultCategories,
+  initialItemTypes,
+} from '../src/domain/donation-catalog';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -60,28 +64,44 @@ async function main() {
     },
   });
 
-  const defaultCategories = [
-    { name: 'Alimento não perecível', measure_unity: 'KG' },
-    { name: 'Roupas', measure_unity: 'UN' },
-    { name: 'Calçados', measure_unity: 'UN' },
-    { name: 'Higiene pessoal', measure_unity: 'UN' },
-    { name: 'Limpeza', measure_unity: 'UN' },
-    { name: 'Variados', measure_unity: 'UN' },
-  ];
-
+  const categoryIds = new Map<string, string>();
   for (const category of defaultCategories) {
-    const existing = await prisma.category.findFirst({
+    const matches = await prisma.category.findMany({
       where: { name: category.name },
     });
-
-    if (existing) {
-      await prisma.category.update({
-        where: { id: existing.id },
-        data: { ...category, active: true },
-      });
-    } else {
-      await prisma.category.create({ data: { ...category, active: true } });
+    const usedByCatalog = initialItemTypes.some(
+      (type) => type.category === category.name
+    );
+    const existing = matches[0];
+    if (
+      usedByCatalog &&
+      (matches.length > 1 ||
+        (existing && existing.measure_unity !== category.measure_unity))
+    ) {
+      throw new Error(
+        `Categoria com nome ou unidade em conflito: ${category.name}.`
+      );
     }
+    const saved = existing
+      ? await prisma.category.update({
+          where: { id: existing.id },
+          data: { active: true },
+        })
+      : await prisma.category.create({ data: { ...category, active: true } });
+    categoryIds.set(category.name, saved.id);
+  }
+
+  for (const { category, ...type } of initialItemTypes) {
+    const data = {
+      ...type,
+      category_id: categoryIds.get(category),
+      active: true,
+    };
+    await prisma.itemType.upsert({
+      where: { code: type.code },
+      create: data,
+      update: data,
+    });
   }
 
   console.log('✔ Seed completed.');

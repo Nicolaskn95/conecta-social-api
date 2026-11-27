@@ -16,6 +16,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest<Request>();
     const { method, originalUrl, body } = req;
     const now = Date.now();
+    const loggedBody = /(?:^|\/)needs(?:\/|$)/.test(req.path) ? undefined : this.sanitize(body);
 
     return next.handle().pipe(
       tap((response) => {
@@ -23,7 +24,7 @@ export class LoggingInterceptor implements NestInterceptor {
         this.logger.log(
           `[${method}] ${originalUrl} - ${duration}ms`,
           'HTTP',
-          this.sanitize(body)
+          loggedBody
         );
       }),
       catchError((err) => {
@@ -32,7 +33,7 @@ export class LoggingInterceptor implements NestInterceptor {
           `[${method}] ${originalUrl} - ${duration}ms - ${err.message}`,
           err.stack,
           'HTTP',
-          this.sanitize(body)
+          loggedBody
         );
         throw err;
       })
@@ -43,7 +44,8 @@ export class LoggingInterceptor implements NestInterceptor {
     if (!payload || typeof payload !== 'object') return payload;
     const redacted = { ...payload };
     Object.keys(redacted).forEach((key) => {
-      if (/password|senha|token|authorization/i.test(key)) {
+      if (/password|senha|token|authorization/i.test(key) ||
+        ['monthly_income_cents', 'housing_description'].includes(key)) {
         redacted[key] = '[REDACTED]';
       }
     });

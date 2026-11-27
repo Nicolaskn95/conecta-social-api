@@ -29,7 +29,6 @@ describe('DonationService', () => {
       delete: jest.fn(),
       findPaginated: jest.fn(),
       countActives: jest.fn(),
-      decrementStockIfAvailable: jest.fn(),
       setStock: jest.fn(),
     } as any;
 
@@ -58,7 +57,8 @@ describe('DonationService', () => {
       stockAdjustmentRepository as any,
       imageService as any,
       transactionManager as any,
-      auditLogService as any
+      auditLogService as any,
+      { findById: jest.fn(), findActive: jest.fn() }
     );
   });
 
@@ -201,7 +201,7 @@ describe('DonationService', () => {
       } as any
     );
 
-    expect(repository.setStock).toHaveBeenCalledWith('d1', 0, expect.anything());
+    expect(repository.setStock).toHaveBeenCalledWith('d1', 2, 0, expect.anything());
     expect(stockAdjustmentRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         id_donation: 'd1',
@@ -260,9 +260,32 @@ describe('DonationService', () => {
       } as any
     );
 
-    expect(repository.setStock).toHaveBeenCalledWith('d1', 3, expect.anything());
+    expect(repository.setStock).toHaveBeenCalledWith('d1', 0, 3, expect.anything());
     expect(result.donation.current_quantity).toBe(3);
     expect(result.donation.available).toBe(true);
+  });
+
+  it('recalcula o ajuste quando uma separação altera o saldo observado', async () => {
+    repository.findById
+      .mockResolvedValueOnce({ id: 'd1', current_quantity: 5 } as any)
+      .mockResolvedValueOnce({ id: 'd1', current_quantity: 3 } as any);
+    repository.setStock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'd1', current_quantity: 4, available: true } as any);
+
+    await service.adjustStock(
+      'd1',
+      { delta_quantity: 1, reason: DonationStockAdjustmentReason.INVENTORY_CORRECTION },
+      { id: 'e1', role: EmployeeRole.ADMIN } as any
+    );
+
+    expect(repository.setStock).toHaveBeenNthCalledWith(1, 'd1', 5, 6, expect.anything());
+    expect(repository.setStock).toHaveBeenNthCalledWith(2, 'd1', 3, 4, expect.anything());
+    expect(stockAdjustmentRepository.create).toHaveBeenCalledTimes(1);
+    expect(stockAdjustmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ previous_quantity: 3, new_quantity: 4 }),
+      expect.anything()
+    );
   });
 
   it('falha ao ajustar estoque para valor negativo', async () => {

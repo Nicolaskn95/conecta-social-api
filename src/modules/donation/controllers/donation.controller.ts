@@ -5,6 +5,7 @@ import {
   Body,
   Put,
   Param,
+  ParseUUIDPipe,
   Delete,
   UseGuards,
   Query,
@@ -31,6 +32,8 @@ import { EmployeeRole } from '@/modules/employee/enums/role.enum';
 import { LoggedUser } from '@/common/decorator/user.decorator';
 import { Employee } from '@/domain/entities';
 
+import { DonationRecommendationService } from '../services/donation-recommendation.service';
+
 const DONATION_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
 @ApiTags('Donations')
@@ -38,7 +41,19 @@ const DONATION_IMAGE_MAX_SIZE_BYTES = 10 * 1024 * 1024;
 @UseGuards(JwtAuthGuard)
 @Controller('donations')
 export class DonationController {
-  constructor(private readonly donationService: DonationService) { }
+  constructor(
+    private readonly donationService: DonationService,
+    private readonly recommendations: DonationRecommendationService,
+  ) {}
+
+  @Get(':id/recommendations')
+  @UseGuards(RolesGuard)
+  @Roles(EmployeeRole.ADMIN, EmployeeRole.MANAGER, EmployeeRole.VOLUNTEER)
+  @ApiOperation({ summary: 'Sugerir destinatários para uma doação pelo catálogo e pelos pedidos em aberto' })
+  recommend(@Param('id', ParseUUIDPipe) id: string) {
+    return this.recommendations.find(id);
+  }
+
 
   @Post()
   @UseInterceptors(
@@ -62,6 +77,16 @@ export class DonationController {
         donator_name: { type: 'string' },
         gender: { type: 'string' },
         size: { type: 'string' },
+        item_type_id: { type: 'string', format: 'uuid', nullable: true },
+        condition: { type: 'string', enum: ['NEW', 'USED_GOOD', 'REQUIRES_REVIEW'], nullable: true },
+        specifications: {
+          nullable: true,
+          description: 'Objeto JSON ou JSON serializado em multipart. Use null em JSON ou campo vazio em multipart para limpar complementos. Campos omitidos preservam os valores na edição.',
+          oneOf: [
+            { type: 'object', properties: { seat_width_cm: { type: 'number' }, shoe_size_br: { type: 'integer' } } },
+            { type: 'string' },
+          ],
+        },
         image: { type: 'string', format: 'binary' },
       },
     },
@@ -149,6 +174,16 @@ export class DonationController {
         donator_name: { type: 'string' },
         gender: { type: 'string' },
         size: { type: 'string' },
+        item_type_id: { type: 'string', format: 'uuid', nullable: true },
+        condition: { type: 'string', enum: ['NEW', 'USED_GOOD', 'REQUIRES_REVIEW'], nullable: true },
+        specifications: {
+          nullable: true,
+          description: 'Objeto JSON ou JSON serializado em multipart. Use null em JSON ou campo vazio em multipart para limpar complementos. Campos omitidos preservam os valores na edição.',
+          oneOf: [
+            { type: 'object', properties: { seat_width_cm: { type: 'number' }, shoe_size_br: { type: 'integer' } } },
+            { type: 'string' },
+          ],
+        },
         active: { type: 'boolean' },
         image: { type: 'string', format: 'binary' },
       },

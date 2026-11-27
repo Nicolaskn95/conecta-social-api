@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 
 @Schema({ collection: 'beneficiaries', timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }, versionKey: false })
 export class BeneficiaryDoc {
+  @Prop({ type: Number, default: 0, select: false }) needs_revision: number;
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
   @Prop({ required: true, index: true }) id_family: string;
   @Prop({ required: true, maxlength: 30 }) name: string;

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { Donation, DonationWithCategory } from '@/domain/entities';
 import {
@@ -20,7 +21,7 @@ export class DonationPrismaRepository extends DonationRepository {
   async create(data: CreateDonationData): Promise<DonationWithCategory> {
     return toDomain(
       await this.prisma.donation.create({
-        data: { ...data, current_quantity: data.initial_quantity },
+        data: { ...data, specifications: data.specifications === null ? Prisma.DbNull : data.specifications && { ...data.specifications }, current_quantity: data.initial_quantity },
         include: withCategory,
       })
     );
@@ -53,11 +54,11 @@ export class DonationPrismaRepository extends DonationRepository {
     );
   }
 
-  async findById(id: string, ctx?: TransactionContext): Promise<DonationWithCategory | null> {
+  async findById(id: string, ctx?: TransactionContext, includeInactive = false): Promise<DonationWithCategory | null> {
     const client = resolvePrismaClient(this.prisma, ctx);
     return toDomain(
       await client.donation.findFirst({
-        where: { id, active: true },
+        where: { id, ...(includeInactive ? {} : { active: true }) },
         include: withCategory,
       })
     );
@@ -67,7 +68,7 @@ export class DonationPrismaRepository extends DonationRepository {
     return toDomain(
       await this.prisma.donation.update({
         where: { id },
-        data,
+        data: { ...data, specifications: data.specifications === null ? Prisma.DbNull : data.specifications && { ...data.specifications } },
         include: withCategory,
       })
     );
@@ -96,47 +97,18 @@ export class DonationPrismaRepository extends DonationRepository {
     return this.prisma.donation.count({ where: { active: true } });
   }
 
-  async decrementStockIfAvailable(
-    id: string,
-    quantity: number,
-    ctx?: TransactionContext
-  ): Promise<Donation | null> {
-    const client = resolvePrismaClient(this.prisma, ctx);
-
-    const result = await client.donation.updateMany({
-      where: { id, active: true, current_quantity: { gte: quantity } },
-      data: { current_quantity: { decrement: quantity } },
-    });
-
-    if (result.count === 0) {
-      return null;
-    }
-
-    const afterUpdate = await client.donation.findUnique({
-      where: { id },
-      select: { current_quantity: true },
-    });
-
-    return toDomain(
-      await client.donation.update({
-        where: { id },
-        data: { available: (afterUpdate?.current_quantity ?? 0) > 0 },
-      })
-    );
-  }
-
   async setStock(
     id: string,
+    expectedQuantity: number,
     newQuantity: number,
-    ctx?: TransactionContext
-  ): Promise<DonationWithCategory> {
+    ctx: TransactionContext,
+    includeInactive = false
+  ): Promise<DonationWithCategory | null> {
     const client = resolvePrismaClient(this.prisma, ctx);
-    return toDomain(
-      await client.donation.update({
-        where: { id },
-        data: { current_quantity: newQuantity, available: newQuantity > 0 },
-        include: withCategory,
-      })
-    );
+    const { count } = await client.donation.updateMany({
+      where: { id, current_quantity: expectedQuantity, ...(includeInactive ? {} : { active: true }) },
+      data: { current_quantity: newQuantity, available: newQuantity > 0 },
+    });
+    return count ? this.findById(id, ctx, includeInactive) : null;
   }
 }

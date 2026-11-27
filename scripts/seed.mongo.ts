@@ -1,9 +1,15 @@
+import {
+  defaultCategories,
+  initialItemTypes,
+} from '../src/domain/donation-catalog';
 import mongoose from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
 import { EmployeeRole } from '../src/domain/enums';
 import {
+  ItemTypeDoc,
+  ItemTypeSchema,
   CategoryDoc,
   CategorySchema,
   EmployeeDoc,
@@ -36,7 +42,9 @@ async function main() {
   const mongoUri =
     process.env.MONGODB_URI || 'mongodb://localhost:27017/conecta_social';
 
-  console.log(`Conectando ao MongoDB em: ${mongoUri.replace(/:([^@]+)@/, ':****@')}`);
+  console.log(
+    `Conectando ao MongoDB em: ${mongoUri.replace(/:([^@]+)@/, ':****@')}`
+  );
   await mongoose.connect(mongoUri);
 
   const EmployeeModel = mongoose.model<EmployeeDoc>(
@@ -48,7 +56,14 @@ async function main() {
     CategorySchema
   );
 
-  const adminEmail = (process.env.ADMIN_EMAIL ?? 'admin@conecta.com').toLowerCase();
+  const ItemTypeModel = mongoose.model<ItemTypeDoc>(
+    ItemTypeDoc.name,
+    ItemTypeSchema
+  );
+
+  const adminEmail = (
+    process.env.ADMIN_EMAIL ?? 'admin@conecta.com'
+  ).toLowerCase();
   const adminName = process.env.ADMIN_NAME ?? 'Admin';
   const adminSurname = process.env.ADMIN_SURNAME ?? 'Root';
   const adminRole = getAdminRole();
@@ -89,27 +104,58 @@ async function main() {
     console.log(`✔ Admin ${adminEmail} criado.`);
   }
 
-  const defaultCategories = [
-    { name: 'Alimento não perecível', measure_unity: 'KG' },
-    { name: 'Roupas', measure_unity: 'UN' },
-    { name: 'Calçados', measure_unity: 'UN' },
-    { name: 'Higiene pessoal', measure_unity: 'UN' },
-    { name: 'Limpeza', measure_unity: 'UN' },
-    { name: 'Variados', measure_unity: 'UN' },
-  ];
-
+  const categoryIds = new Map<string, string>();
   for (const category of defaultCategories) {
-    const existing = await CategoryModel.findOne({ name: category.name });
-    if (existing) {
-      await CategoryModel.findByIdAndUpdate(existing._id, {
-        $set: { ...category, active: true },
-      });
-    } else {
-      await CategoryModel.create({
-        _id: randomUUID(),
-        ...category,
-        active: true,
-      });
+    const matches = await CategoryModel.find({ name: category.name });
+    const usedByCatalog = initialItemTypes.some(
+      (type) => type.category === category.name
+    );
+    const existing = matches[0];
+    if (
+      usedByCatalog &&
+      (matches.length > 1 ||
+        (existing && existing.measure_unity !== category.measure_unity))
+    ) {
+      throw new Error(
+        `Categoria com nome ou unidade em conflito: ${category.name}.`
+      );
+    }
+    const saved = existing
+      ? await CategoryModel.findByIdAndUpdate(
+          existing._id,
+          { $set: { active: true } },
+          { new: true }
+        )
+      : await CategoryModel.create({ ...category, active: true });
+    categoryIds.set(category.name, saved._id);
+  }
+
+  await ItemTypeModel.init();
+  for (const { category, ...type } of initialItemTypes) {
+    const data = {
+      ...type,
+      category_id: categoryIds.get(category),
+      active: true,
+    };
+    try {
+      await ItemTypeModel.updateOne(
+        { code: type.code },
+        { $set: data, $setOnInsert: { _id: randomUUID() } },
+        { upsert: true, runValidators: true }
+      );
+    } catch (error) {
+      if (
+        !(error instanceof mongoose.mongo.MongoServerError) ||
+        error.code !== 11000
+      ) {
+        throw error;
+      }
+      const result = await ItemTypeModel.updateOne(
+        { code: type.code },
+        { $set: data },
+        { runValidators: true }
+      );
+      if (!result.matchedCount) throw error;
     }
   }
 

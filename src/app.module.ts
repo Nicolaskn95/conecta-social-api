@@ -14,6 +14,8 @@ import { ResourcesModule } from './modules/resources/resources.module';
 import { VoiceSearchModule } from './modules/voice-search/voice-search.module';
 import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
 
+import { NeedsModule } from './modules/needs/needs.module';
+
 @Module({
   imports: [
     DatabaseModule.forRoot(),
@@ -29,6 +31,7 @@ import { BeneficiaryModule } from './modules/beneficiary/beneficiary.module';
     ResourcesModule,
     VoiceSearchModule,
     BeneficiaryModule,
+    NeedsModule,
   ],
   controllers: [AppController],
   providers: [],
