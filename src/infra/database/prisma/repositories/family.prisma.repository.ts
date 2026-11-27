@@ -31,8 +31,8 @@ export class FamilyPrismaRepository extends FamilyRepository {
     return toDomain(await this.prisma.family.findMany({ where: { active: true } }));
   }
 
-  async findById(id: string): Promise<Family | null> {
-    return toDomain(await this.prisma.family.findUnique({ where: { id } }));
+  async findById(id: string, ctx?: TransactionContext): Promise<Family | null> {
+    return toDomain(await resolvePrismaClient(this.prisma, ctx).family.findUnique({ where: { id } }));
   }
 
   async findActiveById(id: string, ctx?: TransactionContext): Promise<Family | null> {

@@ -4,6 +4,10 @@ import {
   DonationStockAdjustmentReason,
   EmployeeRole,
   EventStatus,
+  DeliveryMode,
+  DonationCondition,
+  DonationAllocationStatus,
+  NeedStatus,
 } from '../enums';
 
 /**
@@ -55,6 +59,10 @@ export interface Event {
 }
 
 export interface Family {
+  monthly_income_cents?: number | null;
+  housing_description?: string | null;
+  preferred_delivery_mode?: `${DeliveryMode}` | null;
+
   id: string;
   name: string;
   street: string;
@@ -77,6 +85,10 @@ export interface Category {
 }
 
 export interface Donation {
+  item_type_id?: string | null;
+  condition?: DonationCondition | null;
+  specifications?: ItemSpecifications | null;
+
   id: string;
   category_id: string;
   name: string;
@@ -101,6 +113,20 @@ export interface DonationWithCategory extends Donation {
 }
 
 export interface DonationToFamily {
+  status?: DonationAllocationStatus;
+  delivery_mode?: DeliveryMode | null;
+  id_need?: string | null;
+  id_beneficiary?: string | null;
+  separated_at?: Date | null;
+  received_at?: Date | null;
+  confirmed_at?: Date | null;
+  canceled_at?: Date | null;
+  separated_by?: string | null;
+  confirmed_by?: string | null;
+  canceled_by?: string | null;
+  request_id?: string | null;
+  request_fingerprint?: string | null;
+
   id: string;
   id_donation: string;
   id_family: string;
@@ -112,6 +138,7 @@ export interface DonationToFamily {
 }
 
 export interface DonationToFamilyWithRelations extends DonationToFamily {
+  beneficiary?: { id: string; name: string; surname: string; active: boolean } | null;
   donation: DonationWithCategory;
   family: Family;
 }
@@ -153,4 +180,35 @@ export interface AuditLog {
   message: string;
   metadata: JsonValue | null;
   created_at: Date;
+}
+
+export interface ItemSpecifications {
+  seat_width_cm?: number;
+  shoe_size_br?: number;
+}
+
+export interface ItemType {
+  id: string;
+  code: string;
+  name: string;
+  category_id: string;
+  aliases: string[];
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface Need {
+  id: string;
+  id_family: string;
+  id_beneficiary: string | null;
+  item_type_id: string | null;
+  description: string | null;
+  requested_quantity: number | null;
+  specifications: ItemSpecifications | null;
+  status: NeedStatus;
+  created_by: string | null;
+  created_at: Date;
+  updated_at: Date;
+  version: number;
 }

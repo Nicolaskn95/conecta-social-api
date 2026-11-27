@@ -1,8 +1,13 @@
+import { ConcurrentWriteError, retryConflictingTransaction } from '@/domain/transaction/retry-conflicting-transaction';
+import { validItemSpecifications } from '@/domain/item-specifications';
+import { ItemTypeRepository } from '@/domain/repositories/item-type.repository';
+import { ItemSpecifications } from '@/domain/entities';
 import {
   Injectable,
   Logger,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
 import { CreateDonationDto } from '../dtos/create-donation.dto';
@@ -40,7 +45,8 @@ export class DonationService {
     private readonly donationStockAdjustmentRepository: DonationStockAdjustmentRepository,
     private readonly donationImageService: DonationImageService,
     private readonly transactionManager: TransactionManager,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
+    private readonly itemTypeRepository: ItemTypeRepository
   ) {}
 
   async create(
@@ -54,6 +60,7 @@ export class DonationService {
       );
     }
 
+    await this.validateItemDetails(createDonationDto);
     const imageMetadata = await this.uploadImageIfPresent(image);
     const donation = await this.donationRepository.create({
       ...createDonationDto,
@@ -123,7 +130,7 @@ export class DonationService {
     image?: Express.Multer.File,
     actor?: Employee
   ) {
-    await this.getActiveDonationOrThrow(id);
+    const current = await this.getActiveDonationOrThrow(id);
 
     if (
       actor?.role === EmployeeRole.VOLUNTEER &&
@@ -132,6 +139,22 @@ export class DonationService {
       throw new ForbiddenException(
         'Voluntários não podem desativar ou reativar doações.'
       );
+    }
+
+    if (
+      updateDonationDto.category_id !== undefined ||
+      updateDonationDto.item_type_id !== undefined ||
+      updateDonationDto.specifications !== undefined
+    ) {
+      await this.validateItemDetails({
+        category_id: updateDonationDto.category_id ?? current.category_id,
+        item_type_id: updateDonationDto.item_type_id === undefined
+          ? current.item_type_id
+          : updateDonationDto.item_type_id,
+        specifications: updateDonationDto.specifications === undefined
+          ? current.specifications
+          : updateDonationDto.specifications,
+      });
     }
 
     const imageMetadata = await this.uploadImageIfPresent(image);
@@ -153,6 +176,23 @@ export class DonationService {
     });
 
     return this.withSignedImageUrl(donation);
+  }
+
+  private async validateItemDetails(data: {
+    category_id: string;
+    item_type_id?: string | null;
+    specifications?: ItemSpecifications | null;
+  }) {
+    const itemType = data.item_type_id
+      ? await this.itemTypeRepository.findById(data.item_type_id)
+      : null;
+    if (data.item_type_id && (!itemType?.active || itemType.category_id !== data.category_id)) {
+      throw new BadRequestException('Selecione um tipo de item ativo da categoria da doação.');
+    }
+
+    if (!validItemSpecifications(data.specifications, itemType?.code)) {
+      throw new BadRequestException('Especificações inválidas para o tipo de item.');
+    }
   }
 
   async adjustStock(
@@ -191,7 +231,7 @@ export class DonationService {
       );
     }
 
-    const result = await this.transactionManager.run(async (ctx) => {
+    const result = await retryConflictingTransaction(this.transactionManager, async (ctx) => {
       const donation = await this.donationRepository.findById(id, ctx);
 
       if (!donation) {
@@ -199,6 +239,9 @@ export class DonationService {
       }
 
       const newQuantity = donation.current_quantity + dto.delta_quantity;
+      if (newQuantity > 2147483647) {
+        throw new BadRequestException('O ajuste ultrapassaria o limite de estoque.');
+      }
       if (newQuantity < 0) {
         throw new BadRequestException(
           'O ajuste informado deixaria o estoque negativo.'
@@ -207,9 +250,12 @@ export class DonationService {
 
       const updatedDonation = await this.donationRepository.setStock(
         donation.id,
+        donation.current_quantity,
         newQuantity,
         ctx
       );
+
+      if (!updatedDonation) throw new ConcurrentWriteError();
 
       const adjustment =
         await this.donationStockAdjustmentRepository.create(
@@ -245,6 +291,11 @@ export class DonationService {
         adjustment,
         donation: updatedDonation,
       };
+    }).catch((error: unknown) => {
+      if (error instanceof ConcurrentWriteError) {
+        throw new ConflictException('O estoque foi alterado. Tente novamente.');
+      }
+      throw error;
     });
 
     return {

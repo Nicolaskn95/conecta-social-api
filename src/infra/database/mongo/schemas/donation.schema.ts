@@ -1,3 +1,6 @@
+import { DonationCondition } from '../../../../domain/enums';
+import { ItemSpecifications } from '../../../../domain/entities';
+import { ItemSpecificationsSchema } from './item-specifications.schema';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { randomUUID } from 'crypto';
@@ -6,8 +9,19 @@ import { randomUUID } from 'crypto';
   collection: 'donations',
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   versionKey: false,
+  minimize: false,
 })
 export class DonationDoc {
+  @Prop({ type: String, index: true, default: null })
+  item_type_id: string | null;
+
+  @Prop({ type: String, enum: DonationCondition, default: null })
+  condition: DonationCondition | null;
+
+  @Prop({ type: ItemSpecificationsSchema, default: null })
+  specifications: ItemSpecifications | null;
+
+
   @Prop({ type: String, default: () => randomUUID() })
   _id: string;
 

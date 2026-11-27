@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { NeedRepository } from '@/domain/repositories/need.repository';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditActionType, AuditEntityType } from '@/domain/enums';
 import { Employee } from '@/domain/entities';
-import { FamilyRepository } from '@/domain/repositories';
+import { DonationToFamilyRepository, FamilyRepository } from '@/domain/repositories';
 import { TransactionContext, TransactionManager } from '@/domain/transaction/transaction-manager';
 import { AuditLogService } from '@/modules/audit-log/audit-log.service';
 import { Beneficiary, BeneficiaryData, BeneficiaryRepository } from './beneficiary.repository';
@@ -17,6 +18,8 @@ export class BeneficiaryService {
     private readonly families: FamilyRepository,
     private readonly transactions: TransactionManager,
     private readonly audit: AuditLogService,
+    private readonly needs: NeedRepository,
+    private readonly allocations: DonationToFamilyRepository,
   ) {}
 
   async create(dto: CreateBeneficiaryDto, actor?: Employee) {
@@ -57,6 +60,9 @@ export class BeneficiaryService {
 
   async update(id: string, dto: UpdateBeneficiaryDto, actor?: Employee) {
     return this.handleDuplicate(() => this.transactions.run(async ctx => {
+      if (dto.id_family !== undefined && !await this.repository.lockForNeeds(id, ctx)) {
+        throw new NotFoundException('Beneficiário não encontrado.');
+      }
       const current = await this.findOrThrow(id, ctx);
       await this.ensureFamily(dto.id_family ?? current.id_family, ctx);
       const data: Partial<BeneficiaryData> = {};
@@ -76,9 +82,25 @@ export class BeneficiaryService {
         ? (Object.prototype.hasOwnProperty.call(dto, 'disability_details') ? dto.disability_details?.trim() || null : current.disability_details)
         : null;
       this.validateDisability(data);
+      const familyChanged = data.id_family !== undefined && data.id_family !== current.id_family;
+      let movedNeeds = 0;
+      if (familyChanged) {
+        const pending = await this.allocations.findWaitingForBeneficiary(id, ctx);
+        if (pending) {
+          throw new ConflictException(`Resolva a destinação ${pending} aguardando recebimento antes de mudar a família.`);
+        }
+        movedNeeds = await this.needs.moveOpenForBeneficiary(id, data.id_family, ctx);
+      }
       const beneficiary = await this.repository.update(id, data, ctx);
       await this.audit.write({ ctx, actor, entityType: AuditEntityType.BENEFICIARY, entityId: id,
-        actionType: AuditActionType.UPDATE, message: 'Beneficiário atualizado.', metadata: { updated_fields: Object.keys(dto) } });
+        actionType: AuditActionType.UPDATE, message: 'Beneficiário atualizado.', metadata: {
+          updated_fields: Object.keys(dto),
+          ...(familyChanged && {
+            previous_family_id: current.id_family,
+            family_id: data.id_family,
+            moved_needs: movedNeeds,
+          }),
+        } });
       return beneficiary;
     }));
   }

@@ -9,7 +9,7 @@ import {
 } from '@/domain/repositories';
 import { TransactionContext } from '@/domain/transaction/transaction-manager';
 import { FamilyDoc } from '../schemas';
-import { toEntity, toEntityList } from '../mappers/to-entity';
+import { toFamilyEntity } from '../mappers/to-entity';
 import { resolveMongoSession } from '../mongo-transaction-manager';
 
 @Injectable()
@@ -26,22 +26,22 @@ export class FamilyMongoRepository extends FamilyRepository {
       ...data,
       active: data.active ?? true,
     });
-    return toEntity<Family>(created);
+    return toFamilyEntity(created);
   }
 
   async findAll(): Promise<Family[]> {
     const docs = await this.familyModel.find().lean().exec();
-    return toEntityList<Family>(docs);
+    return docs.map(toFamilyEntity);
   }
 
   async findAllActives(): Promise<Family[]> {
     const docs = await this.familyModel.find({ active: true }).lean().exec();
-    return toEntityList<Family>(docs);
+    return docs.map(toFamilyEntity);
   }
 
-  async findById(id: string): Promise<Family | null> {
-    const doc = await this.familyModel.findById(id).lean().exec();
-    return doc ? toEntity<Family>(doc) : null;
+  async findById(id: string, ctx?: TransactionContext): Promise<Family | null> {
+    const doc = await this.familyModel.findById(id).session(resolveMongoSession(ctx) ?? null).lean().exec();
+    return doc ? toFamilyEntity(doc) : null;
   }
 
   async findActiveById(
@@ -53,7 +53,7 @@ export class FamilyMongoRepository extends FamilyRepository {
       .findOne({ _id: id, active: true }, null, { session })
       .lean()
       .exec();
-    return doc ? toEntity<Family>(doc) : null;
+    return doc ? toFamilyEntity(doc) : null;
   }
 
   async update(id: string, data: UpdateFamilyData): Promise<Family> {
@@ -61,7 +61,7 @@ export class FamilyMongoRepository extends FamilyRepository {
       .findByIdAndUpdate(id, { $set: data }, { new: true })
       .lean()
       .exec();
-    return toEntity<Family>(updated);
+    return toFamilyEntity(updated);
   }
 
   async softDelete(id: string): Promise<Family> {
@@ -69,7 +69,7 @@ export class FamilyMongoRepository extends FamilyRepository {
       .findByIdAndUpdate(id, { $set: { active: false } }, { new: true })
       .lean()
       .exec();
-    return toEntity<Family>(updated);
+    return toFamilyEntity(updated);
   }
 
   async findPaginated(skip: number, take: number): Promise<Family[]> {
@@ -80,7 +80,7 @@ export class FamilyMongoRepository extends FamilyRepository {
       .limit(take)
       .lean()
       .exec();
-    return toEntityList<Family>(docs);
+    return docs.map(toFamilyEntity);
   }
 
   async countActives(): Promise<number> {

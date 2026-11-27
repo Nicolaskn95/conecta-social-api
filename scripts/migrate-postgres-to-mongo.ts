@@ -1,7 +1,9 @@
+import { BeneficiaryDoc, BeneficiarySchema } from '../src/infra/database/mongo/schemas/beneficiary.schema';
 import { PrismaClient } from '@prisma/client';
 import mongoose from 'mongoose';
 import * as dotenv from 'dotenv';
 import {
+  ItemTypeDoc, ItemTypeSchema, NeedDoc, NeedSchema,
   AuditLogDoc,
   AuditLogSchema,
   CategoryDoc,
@@ -66,6 +68,65 @@ async function main() {
     AuditLogSchema
   );
 
+  const BeneficiaryModel = mongoose.model(BeneficiaryDoc.name, BeneficiarySchema);
+  const ItemTypeModel = mongoose.model(ItemTypeDoc.name, ItemTypeSchema);
+  const NeedModel = mongoose.model(NeedDoc.name, NeedSchema);
+
+  const sourceTypes = await prisma.itemType.findMany();
+  const sourceBeneficiaries = await prisma.beneficiary.findMany();
+  const sourceCategories = await prisma.category.findMany();
+  const targetTypes = await ItemTypeModel.find().select({ _id: 1, code: 1 }).lean();
+  const targetTypeById = new Map(targetTypes.map((type) => [type._id, type]));
+  const targetTypeByCode = new Map(targetTypes.map((type) => [type.code, type]));
+
+  for (const type of sourceTypes) {
+    const byCode = targetTypeByCode.get(type.code);
+    const byId = targetTypeById.get(type.id);
+    if ((byCode && byCode._id !== type.id) || (byId && byId.code !== type.code)) {
+      throw new Error(`Conflito em item_types (${type.code}): origem ${type.id}, destino ${byCode?._id ?? byId?._id}.`);
+    }
+  }
+
+  const referencedCategories = new Set(sourceTypes.map((type) => type.category_id));
+  const targetCategories = await CategoryModel.find().select({ _id: 1, name: 1, measure_unity: 1 }).lean();
+  for (const category of sourceCategories.filter(({ id }) => referencedCategories.has(id))) {
+    const collision = targetCategories.find((target) =>
+      (target._id !== category.id && target.name === category.name) ||
+      (target._id === category.id && (target.name !== category.name || target.measure_unity !== category.measure_unity))
+    );
+    if (collision) {
+      throw new Error(`Conflito em categories (${category.name}): origem ${category.id}, destino ${collision._id}.`);
+    }
+  }
+
+  const destinationBeneficiaries = await BeneficiaryModel.find({ cpf: { $type: 'string' } }).select({ _id: 1, cpf: 1 }).lean();
+  const beneficiaryByCpf = new Map(destinationBeneficiaries.map(({ _id, cpf }) => [cpf, _id]));
+  for (const { id, cpf } of sourceBeneficiaries) {
+    const targetId = cpf ? beneficiaryByCpf.get(cpf) : undefined;
+    if (targetId && targetId !== id) {
+      throw new Error(`Conflito em beneficiaries: origem ${id}, destino ${targetId}.`);
+    }
+  }
+
+  const sourceAllocations = await prisma.donationToFamily.findMany();
+  const targetAllocations = await DonationToFamilyModel.find({
+    request_id: { $type: 'string' },
+  }).select({ _id: 1, request_id: 1, request_fingerprint: 1 }).lean();
+  const targetByAllocationId = new Map(targetAllocations.map((row) => [row._id, row]));
+  const targetByRequest = new Map(targetAllocations.map((row) => [row.request_id, row]));
+  for (const allocation of sourceAllocations) {
+    const byId = targetByAllocationId.get(allocation.id);
+    if (byId && byId.request_id !== allocation.request_id) {
+      throw new Error(`Conflito em donations_to_family: a destinação ${allocation.id} tem outro request_id no destino.`);
+    }
+    if (!allocation.request_id) continue;
+    const existing = targetByRequest.get(allocation.request_id);
+    if (existing && (existing._id !== allocation.id ||
+      (existing.request_fingerprint != null && existing.request_fingerprint !== allocation.request_fingerprint))) {
+      throw new Error(`Conflito em donations_to_family por request_id: origem ${allocation.id}, destino ${existing._id}.`);
+    }
+  }
+
   const stats: Array<{
     Entidade: string;
     Postgres: number;
@@ -126,7 +187,7 @@ async function main() {
   // 2. Categories
   await migrateCollection(
     'categories',
-    () => prisma.category.findMany(),
+    async () => sourceCategories,
     CategoryModel
   );
 
@@ -136,6 +197,10 @@ async function main() {
     () => prisma.family.findMany(),
     FamilyModel
   );
+
+  await migrateCollection('beneficiaries', async () => sourceBeneficiaries, BeneficiaryModel);
+  await migrateCollection('item_types', async () => sourceTypes, ItemTypeModel);
+  await migrateCollection('needs', () => prisma.need.findMany(), NeedModel);
 
   // 4. Events
   await migrateCollection('events', () => prisma.event.findMany(), EventModel);
@@ -150,7 +215,7 @@ async function main() {
   // 6. DonationsToFamily
   await migrateCollection(
     'donations_to_family',
-    () => prisma.donationToFamily.findMany(),
+    async () => sourceAllocations,
     DonationToFamilyModel
   );
 

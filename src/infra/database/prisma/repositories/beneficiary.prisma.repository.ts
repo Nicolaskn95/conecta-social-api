@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../prisma.service';
 import { resolvePrismaClient } from '../prisma-transaction-manager';
 import { TransactionContext } from '@/domain/transaction/transaction-manager';
 import { BeneficiaryRepository, BeneficiaryData, BeneficiaryFilter } from '@/modules/beneficiary/beneficiary.repository';
+
+const omitInternalFields = { needs_revision: true } as const;
 
 function whereFor(filter: BeneficiaryFilter): Prisma.BeneficiaryWhereInput {
   const search = filter.search?.trim();
@@ -25,17 +28,23 @@ function whereFor(filter: BeneficiaryFilter): Prisma.BeneficiaryWhereInput {
 export class BeneficiaryPrismaRepository extends BeneficiaryRepository {
   constructor(private readonly prisma: PrismaService) { super(); }
 
+  async lockForNeeds(id: string, ctx: TransactionContext) {
+    const count = await resolvePrismaClient(this.prisma, ctx).$executeRaw`
+      UPDATE beneficiaries SET needs_revision = needs_revision + 1 WHERE id = ${id} AND active = true
+    `;
+    return count > 0;
+  }
   create(data: BeneficiaryData, ctx: TransactionContext) {
-    return resolvePrismaClient(this.prisma, ctx).beneficiary.create({ data, include: { family: true } });
+    return resolvePrismaClient(this.prisma, ctx).beneficiary.create({ data, include: { family: true }, omit: omitInternalFields });
   }
   update(id: string, data: Partial<BeneficiaryData>, ctx: TransactionContext) {
-    return resolvePrismaClient(this.prisma, ctx).beneficiary.update({ where: { id }, data, include: { family: true } });
+    return resolvePrismaClient(this.prisma, ctx).beneficiary.update({ where: { id }, data, include: { family: true }, omit: omitInternalFields });
   }
-  findById(id: string, ctx?: TransactionContext) {
-    return resolvePrismaClient(this.prisma, ctx).beneficiary.findFirst({ where: { id, active: true }, include: { family: true } });
+  findById(id: string, ctx?: TransactionContext, includeInactive = false) {
+    return resolvePrismaClient(this.prisma, ctx).beneficiary.findFirst({ where: { id, ...(includeInactive ? {} : { active: true }) }, include: { family: true }, omit: omitInternalFields });
   }
   findAll(filter: BeneficiaryFilter, skip?: number, take?: number) {
-    return this.prisma.beneficiary.findMany({ where: whereFor(filter), include: { family: true }, orderBy: { created_at: 'desc' }, skip, take });
+    return this.prisma.beneficiary.findMany({ where: whereFor(filter), include: { family: true }, omit: omitInternalFields, orderBy: { created_at: 'desc' }, skip, take });
   }
   count(filter: BeneficiaryFilter) {
     return this.prisma.beneficiary.count({ where: whereFor(filter) });

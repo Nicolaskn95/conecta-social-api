@@ -1,3 +1,5 @@
+import { DonationCondition } from "@/domain/enums";
+import { ItemSpecifications } from "@/domain/entities";
 import { Donation, DonationWithCategory } from '../entities';
 import { TransactionContext } from '../transaction/transaction-manager';
 
@@ -9,6 +11,9 @@ export interface DonationImageFields {
 }
 
 export interface CreateDonationData extends DonationImageFields {
+  item_type_id?: string | null;
+  condition?: DonationCondition | null;
+  specifications?: ItemSpecifications | null;
   category_id: string;
   name: string;
   description?: string | null;
@@ -21,6 +26,9 @@ export interface CreateDonationData extends DonationImageFields {
 }
 
 export interface UpdateDonationData extends DonationImageFields {
+  item_type_id?: string | null;
+  condition?: DonationCondition | null;
+  specifications?: ItemSpecifications | null;
   category_id?: string;
   name?: string;
   description?: string | null;
@@ -37,27 +45,17 @@ export abstract class DonationRepository {
   abstract findAllActives(): Promise<DonationWithCategory[]>;
   abstract findAllWithStock(): Promise<DonationWithCategory[]>;
   /** Doação ativa (com categoria). */
-  abstract findById(id: string, ctx?: TransactionContext): Promise<DonationWithCategory | null>;
+  abstract findById(id: string, ctx?: TransactionContext, includeInactive?: boolean): Promise<DonationWithCategory | null>;
   abstract update(id: string, data: UpdateDonationData): Promise<DonationWithCategory>;
   abstract delete(id: string): Promise<void>;
   abstract findPaginated(skip: number, take: number): Promise<DonationWithCategory[]>;
   abstract countActives(): Promise<number>;
 
-  /**
-   * Decrementa o estoque de forma atômica somente se houver quantidade suficiente
-   * (doação ativa e current_quantity >= quantity). Atualiza `available`.
-   * Retorna a doação atualizada ou `null` se não houver estoque suficiente.
-   */
-  abstract decrementStockIfAvailable(
-    id: string,
-    quantity: number,
-    ctx?: TransactionContext
-  ): Promise<Donation | null>;
-
-  /** Define current_quantity e recalcula `available`. */
   abstract setStock(
     id: string,
+    expectedQuantity: number,
     newQuantity: number,
-    ctx?: TransactionContext
-  ): Promise<DonationWithCategory>;
+    ctx: TransactionContext,
+    includeInactive?: boolean
+  ): Promise<DonationWithCategory | null>;
 }

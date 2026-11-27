@@ -22,6 +22,7 @@
     "seed:prod": "node dist/prisma/seed.js",
     "seed:mongo": "ts-node --transpile-only -r tsconfig-paths/register scripts/seed.mongo.ts",
     "seed:mongo:prod": "node dist/scripts/seed.mongo.js",
+    "synthetic": "ts-node -r tsconfig-paths/register scripts/synthetic/index.ts",
     "migrate:pg-to-mongo": "ts-node --transpile-only -r tsconfig-paths/register scripts/migrate-postgres-to-mongo.ts"
   },
   "dependencies": {
@@ -56,6 +57,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "9.9.0",
     "@nestjs/cli": "^10.2.3",
     "@nestjs/schematics": "^11.0.1",
     "@nestjs/testing": "^11.1.1",

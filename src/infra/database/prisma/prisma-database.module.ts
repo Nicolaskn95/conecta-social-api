@@ -1,3 +1,7 @@
+import { NeedRepository } from '@/domain/repositories/need.repository';
+import { NeedPrismaRepository } from './repositories/need.prisma.repository';
+import { ItemTypeRepository } from '@/domain/repositories/item-type.repository';
+import { ItemTypePrismaRepository } from './repositories/item-type.prisma.repository';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import {
@@ -28,6 +32,8 @@ import { BeneficiaryRepository } from '@/modules/beneficiary/beneficiary.reposit
 import { BeneficiaryPrismaRepository } from './repositories/beneficiary.prisma.repository';
 
 const providers = [
+  { provide: NeedRepository, useClass: NeedPrismaRepository },
+  { provide: ItemTypeRepository, useClass: ItemTypePrismaRepository },
   PrismaService,
   { provide: BeneficiaryRepository, useClass: BeneficiaryPrismaRepository },
   {

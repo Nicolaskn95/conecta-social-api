@@ -26,6 +26,7 @@ export enum DonationStockAdjustmentReason {
 }
 
 export enum AuditEntityType {
+  NEED = 'NEED',
   DONATION = 'DONATION',
   DONATION_TO_FAMILY = 'DONATION_TO_FAMILY',
   FAMILY = 'FAMILY',
@@ -42,4 +43,28 @@ export enum AuditActionType {
   UPDATE_STATUS = 'UPDATE_STATUS',
   UPDATE_ATTENDANCE = 'UPDATE_ATTENDANCE',
   UPDATE_INSTAGRAM = 'UPDATE_INSTAGRAM',
+}
+
+export enum DeliveryMode {
+  PICKUP = 'PICKUP',
+  DELIVERY = 'DELIVERY',
+}
+
+export enum DonationCondition {
+  NEW = 'NEW',
+  USED_GOOD = 'USED_GOOD',
+  REQUIRES_REVIEW = 'REQUIRES_REVIEW',
+}
+
+export enum NeedStatus {
+  OPEN = 'OPEN',
+  FULFILLED = 'FULFILLED',
+  CLOSED = 'CLOSED',
+}
+
+export enum DonationAllocationStatus {
+  UNKNOWN = 'UNKNOWN',
+  WAITING_RECEIPT = 'WAITING_RECEIPT',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELED',
 }

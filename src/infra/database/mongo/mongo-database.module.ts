@@ -1,6 +1,11 @@
+import { NeedRepository } from '@/domain/repositories/need.repository';
+import { NeedMongoRepository } from './repositories/need.mongo.repository';
+import { ItemTypeRepository } from '@/domain/repositories/item-type.repository';
+import { ItemTypeMongoRepository } from './repositories/item-type.mongo.repository';
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
+  ItemTypeDoc, ItemTypeSchema, NeedDoc, NeedSchema,
   AuditLogDoc,
   AuditLogSchema,
   CategoryDoc,
@@ -45,6 +50,8 @@ import { BeneficiaryMongoRepository } from './repositories/beneficiary.mongo.rep
 import { BeneficiaryDoc, BeneficiarySchema } from './schemas/beneficiary.schema';
 
 const featureSchemas = [
+  { name: ItemTypeDoc.name, schema: ItemTypeSchema },
+  { name: NeedDoc.name, schema: NeedSchema },
   { name: BeneficiaryDoc.name, schema: BeneficiarySchema },
   { name: EmployeeDoc.name, schema: EmployeeSchema },
   { name: EventDoc.name, schema: EventSchema },
@@ -60,6 +67,8 @@ const featureSchemas = [
 ];
 
 const providers = [
+  { provide: NeedRepository, useClass: NeedMongoRepository },
+  { provide: ItemTypeRepository, useClass: ItemTypeMongoRepository },
   { provide: BeneficiaryRepository, useClass: BeneficiaryMongoRepository },
   {
     provide: TransactionManager,

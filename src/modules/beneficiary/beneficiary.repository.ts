@@ -29,9 +29,10 @@ export interface BeneficiaryFilter {
 }
 
 export abstract class BeneficiaryRepository {
+  abstract lockForNeeds(id: string, ctx: TransactionContext): Promise<boolean>;
   abstract create(data: BeneficiaryData, ctx: TransactionContext): Promise<Beneficiary>;
   abstract update(id: string, data: Partial<BeneficiaryData>, ctx: TransactionContext): Promise<Beneficiary>;
-  abstract findById(id: string, ctx?: TransactionContext): Promise<Beneficiary | null>;
+  abstract findById(id: string, ctx?: TransactionContext, includeInactive?: boolean): Promise<Beneficiary | null>;
   abstract findAll(filter: BeneficiaryFilter, skip?: number, take?: number): Promise<Beneficiary[]>;
   abstract count(filter: BeneficiaryFilter): Promise<number>;
   abstract suggestions(search: string | undefined, limit: number): Promise<string[]>;

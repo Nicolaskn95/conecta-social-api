@@ -1,8 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { DeliveryMode } from '@/domain/enums';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsNotEmpty,
-  IsNumber,
+  IsInt,
+  IsEnum,
+  Max,
   IsOptional,
   IsString,
   IsUUID,
@@ -14,6 +17,26 @@ const emptyToUndefined = ({ value }: { value: unknown }) =>
   value === '' || value === null ? undefined : value;
 
 export class CreateDonationToFamilyDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  id_beneficiary?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  id_need?: string;
+
+  @ApiPropertyOptional({ enum: DeliveryMode })
+  @IsOptional()
+  @IsEnum(DeliveryMode)
+  delivery_mode?: DeliveryMode;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  request_id?: string;
+
   @ApiProperty({
     description: 'ID da doação que será vinculada à família',
     format: 'uuid',
@@ -36,7 +59,8 @@ export class CreateDonationToFamilyDto {
   })
   @IsNotEmpty()
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Max(2147483647)
   @Min(1)
   quantity: number;
 

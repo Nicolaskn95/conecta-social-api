@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { BeneficiaryDoc } from '../schemas/beneficiary.schema';
 import { FamilyDoc } from '../schemas/family.schema';
-import { toEntity } from '../mappers/to-entity';
+import { toEntity, toFamilyEntity } from '../mappers/to-entity';
 import { resolveMongoSession } from '../mongo-transaction-manager';
 import { TransactionContext } from '@/domain/transaction/transaction-manager';
 import { Beneficiary, BeneficiaryData, BeneficiaryFilter, BeneficiaryRepository } from '@/modules/beneficiary/beneficiary.repository';
@@ -32,10 +32,18 @@ export class BeneficiaryMongoRepository extends BeneficiaryRepository {
   ) { super(); }
 
   private async withFamily(doc: any, ctx?: TransactionContext): Promise<Beneficiary> {
-    const entity = toEntity<Beneficiary>(doc);
+    const { needs_revision: _revision, ...entity } = toEntity<Beneficiary & { needs_revision?: number }>(doc);
     const family = await this.families.findById(entity.id_family).session(resolveMongoSession(ctx) ?? null).lean().exec();
-    entity.family = family ? toEntity(family) : null;
+    entity.family = family ? toFamilyEntity(family) : null;
     return entity;
+  }
+  async lockForNeeds(id: string, ctx: TransactionContext) {
+    const result = await this.model.updateOne(
+      { _id: id, active: true },
+      { $inc: { needs_revision: 1 } },
+      { session: resolveMongoSession(ctx), timestamps: false }
+    ).exec();
+    return result.matchedCount > 0;
   }
   async create(data: BeneficiaryData, ctx: TransactionContext) {
     const [doc] = await this.model.create([data], { session: resolveMongoSession(ctx) });
@@ -46,8 +54,8 @@ export class BeneficiaryMongoRepository extends BeneficiaryRepository {
     if (!doc) throw new Error('Beneficiário não encontrado.');
     return this.withFamily(doc, ctx);
   }
-  async findById(id: string, ctx?: TransactionContext) {
-    const doc = await this.model.findOne({ _id: id, active: true }).session(resolveMongoSession(ctx) ?? null).lean().exec();
+  async findById(id: string, ctx?: TransactionContext, includeInactive = false) {
+    const doc = await this.model.findOne({ _id: id, ...(includeInactive ? {} : { active: true }) }).session(resolveMongoSession(ctx) ?? null).lean().exec();
     return doc ? this.withFamily(doc, ctx) : null;
   }
   async findAll(filter: BeneficiaryFilter, skip?: number, take?: number) {
